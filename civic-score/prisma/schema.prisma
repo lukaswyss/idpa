@@ -1,0 +1,47 @@
+// prisma/schema.prisma
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Participant {
+  id         String     @id @default(cuid())
+  createdAt  DateTime   @default(now())
+  entries    DayEntry[]
+}
+
+model Action {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  label     String
+  category  String   // "Public", "Work", "Private", "Digital"
+  weight    Int      // e.g. +3 / -2
+  polarity  String   // "positive" | "negative"
+  // optional: isActive Boolean @default(true)
+  entryActions EntryAction[]
+}
+
+model DayEntry {
+  id            String        @id @default(cuid())
+  participantId String
+  date          DateTime
+  note          String? 
+  totalScore    Int
+  participant   Participant   @relation(fields: [participantId], references: [id])
+  actions       EntryAction[]
+  @@unique([participantId, date]) // 1 Eintrag pro Tag/Teilnehmende:r
+}
+
+model EntryAction {
+  id         String   @id @default(cuid())
+  dayEntryId String
+  actionId   String
+  dayEntry   DayEntry @relation(fields: [dayEntryId], references: [id])
+  action     Action   @relation(fields: [actionId], references: [id])
+  @@unique([dayEntryId, actionId])
+}
