@@ -13,6 +13,7 @@ model Participant {
   id         String     @id @default(cuid())
   createdAt  DateTime   @default(now())
   entries    DayEntry[]
+  memberships ChallengeMembership[]
 }
 
 model Action {
@@ -32,9 +33,13 @@ model DayEntry {
   date          DateTime
   note          String? 
   totalScore    Int
+  // Optional association to a Challenge so entries can be scoped per challenge
+  challengeId   String?
   participant   Participant   @relation(fields: [participantId], references: [id])
+  challenge     Challenge?    @relation(fields: [challengeId], references: [id])
   actions       EntryAction[]
-  @@unique([participantId, date]) // 1 Eintrag pro Tag/Teilnehmende:r
+  // Allow one entry per participant, date and challenge context (null means general)
+  @@unique([participantId, date, challengeId])
 }
 
 model EntryAction {
@@ -44,4 +49,37 @@ model EntryAction {
   dayEntry   DayEntry @relation(fields: [dayEntryId], references: [id])
   action     Action   @relation(fields: [actionId], references: [id])
   @@unique([dayEntryId, actionId])
+}
+
+model Challenge {
+  id          String                 @id @default(cuid())
+  createdAt   DateTime               @default(now())
+  code        String                 @unique
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  startScore  Int                    @default(0)
+  days        ChallengeDay[]
+  memberships ChallengeMembership[]
+  entries     DayEntry[]
+}
+
+model ChallengeDay {
+  id          String    @id @default(cuid())
+  challengeId String
+  date        DateTime
+  question    String?
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  @@unique([challengeId, date])
+}
+
+model ChallengeMembership {
+  id            String      @id @default(cuid())
+  participantId String
+  challengeId   String
+  joinedAt      DateTime    @default(now())
+  participant   Participant @relation(fields: [participantId], references: [id])
+  challenge     Challenge   @relation(fields: [challengeId], references: [id])
+  @@unique([participantId, challengeId])
 }

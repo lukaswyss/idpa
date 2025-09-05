@@ -1,3 +1,23 @@
+# Civic Score
+
+## Challenges (neu)
+
+- Admin-Seite: `/admin` (versteckt, keine Links). Hier kannst du Challenges erstellen (Code, Titel, Start/Ende) und pro Tag eine Frage definieren.
+- Beitreten: `/join` – gib den Challenge-Code ein, um Mitglied zu werden.
+- Challenge-Ansicht: `/challenge` – zeigt aktuelle Challenge, Tagesfrage und Formular. Einträge werden der Challenge zugeordnet.
+- Heute-Ansicht: `/` – zeigt ein Aktivitätsraster wie bei GitHub. Der heutige Tag ist markiert. Navigation oben links via Tabs.
+
+## Entwicklung
+
+Nach Schema-Änderungen bitte lokal Prisma-Client generieren und Migrationen anwenden:
+
+```
+npx prisma generate
+npx prisma migrate dev --name add_challenges
+```
+
+Falls auf Windows ein EPERM bei `query_engine-windows.dll.node` auftritt, bitte Editor/Dev-Server kurz stoppen und erneut ausführen.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

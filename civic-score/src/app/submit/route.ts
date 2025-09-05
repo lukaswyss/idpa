@@ -6,6 +6,8 @@ import { z } from "zod";
 const BodySchema = z.object({
   selected: z.array(z.string()).default([]),
   note: z.string().optional().default(""),
+  // Challenge Code ist Pflicht: Nur Einträge innerhalb einer Challenge erlaubt
+  challengeCode: z.string().min(1),
 });
 
 export async function POST(req: NextRequest) {
@@ -29,19 +31,43 @@ export async function POST(req: NextRequest) {
       : [];
     const total = actions.reduce((sum: number, a: { weight: number }) => sum + a.weight, 0);
 
-    // Upsert Tages-Eintrag
-    const entry = await prisma.dayEntry.upsert({
-      where: { participantId_date: { participantId: participant.id, date: day } },
-      update: { note: parsed.data.note, totalScore: total },
-      create: { participantId: participant.id, date: day, note: parsed.data.note, totalScore: total },
+    // Challenge-Kontext per Code ermitteln und Mitgliedschaft erzwingen
+    const challenge = await (prisma as any).challenge.findUnique({ where: { code: parsed.data.challengeCode.trim() } });
+    if (!challenge) {
+      return NextResponse.json({ ok: false, error: "Unbekannte Challenge" }, { status: 400 });
+    }
+    const membership = await (prisma as any).challengeMembership.findUnique({
+      where: { participantId_challengeId: { participantId: participant.id, challengeId: challenge.id } },
     });
+    if (!membership) {
+      return NextResponse.json({ ok: false, error: "Nicht Mitglied der Challenge" }, { status: 403 });
+    }
+    const challengeId: string | undefined = challenge.id;
+
+    // Upsert Tages-Eintrag
+    // Kein Upsert im HTTP-Modus: erst suchen, dann update/create
+    let entry = await (prisma as any).dayEntry.findUnique({
+      where: { participantId_date_challengeId: { participantId: participant.id, date: day, challengeId } },
+    });
+    if (entry) {
+      entry = await (prisma as any).dayEntry.update({
+        where: { id: entry.id },
+        data: { note: parsed.data.note, totalScore: total },
+      });
+    } else {
+      entry = await (prisma as any).dayEntry.create({
+        data: { participantId: participant.id, date: day, note: parsed.data.note, totalScore: total, challengeId },
+      });
+    }
 
     // Link Actions (ersetzen)
     await prisma.entryAction.deleteMany({ where: { dayEntryId: entry.id }});
     if (actions.length) {
-      await prisma.entryAction.createMany({
-        data: actions.map((a: { id: string }) => ({ dayEntryId: entry.id, actionId: a.id })),
-      });
+      for (const a of actions) {
+        await prisma.entryAction.create({
+          data: { dayEntryId: entry.id, actionId: (a as { id: string }).id },
+        });
+      }
     }
 
     return NextResponse.json({ ok: true, total });

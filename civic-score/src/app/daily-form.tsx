@@ -23,19 +23,19 @@ const Schema = z.object({
 });
 type FormData = z.infer<typeof Schema>;
 
-export function DailyForm({ actions }: { actions: Action[] }) {
+export function DailyForm({ actions, challengeCode, initialSelected, initialNote }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string }) {
   const groups = actions.reduce<Record<string, Action[]>>((acc, a) => {
     (acc[a.category] ||= []).push(a);
     return acc;
   }, {});
-  const form = useForm<FormData>({ resolver: zodResolver(Schema), defaultValues: { selected: [], note: "" }});
+  const form = useForm<FormData>({ resolver: zodResolver(Schema), defaultValues: { selected: initialSelected ?? [], note: initialNote ?? "" }});
   const [pending, start] = useTransition();
 
   async function submit(data: FormData) {
     const res = await fetch("/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, challengeCode }),
     });
     if (res.ok) toast.success("Gespeichert", { description: "Tages-Score aktualisiert." });
     else toast.error("Fehler", { description: "Konnte nicht speichern." });
