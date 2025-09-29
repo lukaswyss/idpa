@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/db";
 import { getOrCreateParticipant } from "@/lib/participant";
+import { getSessionUser } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
+import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 async function joinChallenge(formData: FormData): Promise<void> {
   "use server";
@@ -51,6 +55,17 @@ async function joinChallenge(formData: FormData): Promise<void> {
 }
 
 export default async function JoinPage() {
+  const session = await getSessionUser();
+  if (!session) {
+    return (
+      <main className="mx-auto max-w-3xl p-6 space-y-6">
+        <section className="max-w-md space-y-3">
+          <h1 className="text-2xl font-semibold">Challenge beitreten</h1>
+          <p>Bitte <Link href="/login" className="underline">anmelden</Link>, um beizutreten.</p>
+        </section>
+      </main>
+    );
+  }
   const participant = await getOrCreateParticipant();
   const memberships = await (prisma as any).challengeMembership.findMany({
     where: { participantId: participant.id },
@@ -62,8 +77,8 @@ export default async function JoinPage() {
       <section className="max-w-md space-y-3">
         <h1 className="text-2xl font-semibold">Challenge beitreten</h1>
         <form action={joinChallenge} className="space-y-3">
-          <input name="code" placeholder="Code eingeben" className="border rounded px-3 py-2 w-full" />
-          <button className="bg-black text-white px-3 py-2 rounded" type="submit">Beitreten</button>
+          <Input name="code" placeholder="Code eingeben" />
+          <Button type="submit">Beitreten</Button>
         </form>
       </section>
 

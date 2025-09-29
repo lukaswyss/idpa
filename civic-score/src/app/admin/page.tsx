@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
 import { headers, cookies } from "next/headers";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { DateInput } from "@/components/date-input";
 
 async function createChallenge(formData: FormData): Promise<void> {
   "use server";
@@ -15,6 +19,7 @@ async function createChallenge(formData: FormData): Promise<void> {
     end: z.string(),
     description: z.string().optional(),
     startScore: z.coerce.number().int().min(0).default(0),
+    config: z.string().optional(),
   });
   const parsed = Schema.safeParse({
     title: formData.get("title"),
@@ -23,6 +28,7 @@ async function createChallenge(formData: FormData): Promise<void> {
     end: formData.get("end"),
     description: formData.get("description") ?? undefined,
     startScore: formData.get("startScore"),
+    config: formData.get("config") ?? undefined,
   });
   if (!parsed.success) return;
 
@@ -38,6 +44,7 @@ async function createChallenge(formData: FormData): Promise<void> {
       startDate,
       endDate,
       startScore: parsed.data.startScore ?? 0,
+      config: parsed.data.config ? safeParseJson(parsed.data.config) : undefined,
     },
   });
   revalidatePath("/admin");
@@ -45,24 +52,17 @@ async function createChallenge(formData: FormData): Promise<void> {
 
 // Entfernt: Tagesfrage-Funktionalität
 
-async function loginAdmin(formData: FormData): Promise<void> {
-  "use server";
-  const Schema = z.object({ code: z.string().min(1) });
-  const parsed = Schema.safeParse({ code: formData.get("code") });
-  if (!parsed.success) return;
-  const expected = process.env.ADMIN_CODE;
-  if (expected && parsed.data.code === expected) {
-    const store: any = await cookies();
-    store.set("admin_code", parsed.data.code, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+function safeParseJson(input?: string | null): any {
+  if (!input) return undefined;
+  try {
+    const obj = JSON.parse(input as string);
+    return obj;
+  } catch {
+    return undefined;
   }
-  revalidatePath("/admin");
 }
+
+// Removed admin code login gate. Admin access is role-based only.
 
 async function deleteChallenge(formData: FormData): Promise<void> {
   "use server";
@@ -78,9 +78,8 @@ async function deleteChallenge(formData: FormData): Promise<void> {
   }
   // Lösche DayEntries innerhalb der Challenge
   await (prisma as any).dayEntry.deleteMany({ where: { challengeId } });
-  // Lösche Memberships und Days
+  // Lösche Memberships (ChallengeDay entfernt)
   await (prisma as any).challengeMembership.deleteMany({ where: { challengeId } });
-  await (prisma as any).challengeDay.deleteMany({ where: { challengeId } });
   // Lösche Challenge
   await (prisma as any).challenge.delete({ where: { id: challengeId } });
   revalidatePath("/admin");
@@ -135,24 +134,14 @@ async function revokeAdmin(formData: FormData): Promise<void> {
 }
 
 export default async function AdminPage() {
-  // Role-based admin in addition to optional code-based gate
-  const hdrs: any = await headers();
-  const providedHeader = hdrs.get("x-admin-code") || undefined;
-  const cookieStore: any = await cookies();
-  const providedCookie = cookieStore.get("admin_code")?.value;
-  const provided = providedHeader ?? providedCookie;
-  const expected = process.env.ADMIN_CODE;
+  // Role-based admin only
   const roleIsAdmin = await isCurrentUserAdmin();
-  if ((!expected || provided !== expected) && !roleIsAdmin) {
+  if (!roleIsAdmin) {
     return (
       <main className="mx-auto max-w-3xl p-6 space-y-6">
         <section className="max-w-md space-y-3">
-          <h1 className="text-2xl font-semibold">Admin Login</h1>
-          <form action={loginAdmin} className="space-y-3">
-            <input name="code" type="password" placeholder="Admin-Code" className="border rounded px-3 py-2 w-full" />
-            <button className="bg-black text-white px-3 py-2 rounded" type="submit">Einloggen</button>
-          </form>
-          <p className="text-sm opacity-70">Code wird mit der Umgebungsvariable verglichen.</p>
+          <h1 className="text-2xl font-semibold">Kein Zugriff</h1>
+          <p className="text-sm opacity-70">Nur angemeldete Admins können diese Seite sehen.</p>
         </section>
       </main>
     );
@@ -165,23 +154,25 @@ export default async function AdminPage() {
     <main className="mx-auto max-w-3xl p-6 space-y-8">
       <h1 className="text-2xl font-semibold">Admin</h1>
       <form action={logoutAdmin}>
-        <button className="text-sm underline" type="submit">Logout</button>
+        <Button variant="link" className="p-0 h-auto" type="submit">Logout</Button>
       </form>
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Neue Challenge</h2>
         <form action={createChallenge} className="grid gap-2 grid-cols-2 items-end">
-          <input name="title" placeholder="Titel" className="border rounded px-3 py-2 col-span-2" />
+          <Input name="title" placeholder="Titel" className="col-span-2" />
           <label htmlFor="code">Zugangscode</label>
           <label htmlFor="startScore">Startscore</label>
-          <input name="code" placeholder="Code" className="border rounded px-3 py-2" />
-          <input name="startScore" type="number" min={0} defaultValue={0} placeholder="Startscore" className="border rounded px-3 py-2" />
+          <Input name="code" placeholder="Code" />
+          <Input name="startScore" type="number" min={0} defaultValue={0} placeholder="Startscore" />
           <label htmlFor="start">Start</label>
           <label htmlFor="end">Ende</label>
-          <input name="start" type="date" className="border rounded px-3 py-2" />
-          <input name="end" type="date" className="border rounded px-3 py-2" />
-          <input name="description" placeholder="Beschreibung (optional)" className="border rounded px-3 py-2 col-span-2" />
-          <button className="bg-black text-white px-3 py-2 rounded w-fit" type="submit">Erstellen</button>
+          <DateInput name="start" defaultValue={format(new Date(), "yyyy-MM-dd")} />
+          <DateInput name="end" />
+          <Input name="description" placeholder="Beschreibung (optional)" className="col-span-2" />
+          <label htmlFor="config" className="col-span-2">Konfiguration (JSON)</label>
+          <textarea name="config" className="col-span-2 min-h-40 p-2 border rounded" placeholder='{"quizBefore":{...},"quizAfter":{...},"defined":{...},"daily":{...}}'></textarea>
+          <Button className="w-fit" type="submit">Erstellen</Button>
         </form>
       </section>
 
@@ -190,7 +181,9 @@ export default async function AdminPage() {
         <ul className="space-y-2">
           {challenges.map((c: any) => (
             <li key={c.id} className="text-sm flex items-center justify-between gap-4">
-              <span>{c.title} ({c.code}) – {format(c.startDate, "dd.MM.yyyy")}–{format(c.endDate, "dd.MM.yyyy")}</span>
+              <span>
+                <Link className="underline" href={`/admin/${c.id}`}>{c.title}</Link> ({c.code}) – {format(c.startDate, "dd.MM.yyyy")}–{format(c.endDate, "dd.MM.yyyy")}
+              </span>
               <AlertDialog>
                 <AlertDialogTrigger className="text-red-600 underline">Löschen</AlertDialogTrigger>
                 <AlertDialogContent>
@@ -202,9 +195,9 @@ export default async function AdminPage() {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                    <form action={deleteChallenge}>
+                    <form>
                       <input type="hidden" name="id" value={c.id} />
-                      <AlertDialogAction className="bg-red-600 hover:bg-red-700">Ja, löschen</AlertDialogAction>
+                      <AlertDialogAction formAction={deleteChallenge} type="submit" className="bg-red-600 hover:bg-red-700">Ja, löschen</AlertDialogAction>
                     </form>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -217,7 +210,7 @@ export default async function AdminPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Bereinigung</h2>
         <form action={cleanupUnassigned}>
-          <button className="bg-red-600 text-white px-3 py-2 rounded" type="submit">Einträge ohne Challenge löschen</button>
+          <Button className="bg-red-600 hover:bg-red-700" type="submit">Einträge ohne Challenge löschen</Button>
         </form>
         <p className="text-xs opacity-70">Löscht DayEntries ohne Challenge und deren verknüpfte Aktionen.</p>
       </section>
@@ -229,21 +222,17 @@ export default async function AdminPage() {
             const isAdmin = adminRoles.some((r: any) => r.userId === u.id);
             return (
               <div key={u.id} className="flex items-center justify-between border rounded px-3 py-2">
-                <div className="text-sm">
-                  <div>ID: {u.id}</div>
-                  {u.email ? <div>Email: {u.email}</div> : null}
-                  {u.displayName ? <div>Name: {u.displayName}</div> : null}
-                </div>
+                <div className="text-sm">ID: {u.id}</div>
                 <div>
                   {isAdmin ? (
                     <form action={revokeAdmin}>
                       <input type="hidden" name="userId" value={u.id} />
-                      <button className="text-sm underline" type="submit">Revoke</button>
+                      <Button variant="link" className="text-sm p-0 h-auto" type="submit">Revoke</Button>
                     </form>
                   ) : (
                     <form action={grantAdmin}>
                       <input type="hidden" name="userId" value={u.id} />
-                      <button className="text-sm underline" type="submit">Grant</button>
+                      <Button variant="link" className="text-sm p-0 h-auto" type="submit">Grant</Button>
                     </form>
                   )}
                 </div>

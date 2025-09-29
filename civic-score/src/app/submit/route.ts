@@ -6,6 +6,7 @@ import { z } from "zod";
 const BodySchema = z.object({
   selected: z.array(z.string()).default([]),
   note: z.string().optional().default(""),
+  answers: z.record(z.any()).optional().default({}),
   // Challenge Code ist Pflicht: Nur Einträge innerhalb einer Challenge erlaubt
   challengeCode: z.string().min(1),
 });
@@ -52,11 +53,11 @@ export async function POST(req: NextRequest) {
     if (entry) {
       entry = await (prisma as any).dayEntry.update({
         where: { id: entry.id },
-        data: { note: parsed.data.note, totalScore: total },
+        data: { note: parsed.data.note, totalScore: total, answers: parsed.data.answers as any },
       });
     } else {
       entry = await (prisma as any).dayEntry.create({
-        data: { participantId: participant.id, date: day, note: parsed.data.note, totalScore: total, challengeId },
+        data: { participantId: participant.id, date: day, note: parsed.data.note, totalScore: total, challengeId, answers: parsed.data.answers as any },
       });
     }
 

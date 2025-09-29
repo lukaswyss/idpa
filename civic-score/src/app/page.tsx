@@ -4,10 +4,12 @@ import { DailyForm } from "@/app/daily-form";
 import { getOrCreateParticipant } from "@/lib/participant";
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { getSessionUser } from "@/lib/auth";
 
 export default async function Home() {
   const actions = await prisma.action.findMany({ orderBy: [{ category: "asc" }, { label: "asc" }] });
   const today = new Date();
+  const session = await getSessionUser();
 
   // Load latest joined challenge for activity context
   const participant = await getOrCreateParticipant();
@@ -21,6 +23,8 @@ export default async function Home() {
   let days: { date: Date; score: number }[] = [];
   let initialSelected: string[] = [];
   let initialNote: string | undefined = undefined;
+  let todayQuestions: { id: string; label: string; type: "text" | "boolean" | "number" }[] = [];
+  let todayAnswers: Record<string, unknown> | undefined = undefined;
   if (challenge) {
     // Build range of days between start and end
     const d0 = new Date(challenge.startDate);
@@ -44,11 +48,41 @@ export default async function Home() {
       const te: any = todayEntry as any;
       initialSelected = (te.actions || []).map((a: any) => a.actionId);
       initialNote = te.note ?? undefined;
+      todayAnswers = te.answers ?? undefined;
     }
     days = grid.map((d) => {
       const entry = (entries as any[]).find((e: { date: Date; totalScore: number }) => new Date(e.date).toDateString() === d.toDateString());
       return { date: d, score: entry?.totalScore ?? 0 };
     });
+
+    // Determine today's questions (supports config.defined.days / config.daily.questions)
+    const cfg: any = challenge.config || {};
+    const dayKey = format(day, "yyyy-MM-dd");
+    const isDefinedDay = Boolean(
+      cfg && cfg.defined && Array.isArray(cfg.defined.days) && cfg.defined.days.includes(dayKey)
+    );
+    let sourceQuestions: any[] = [];
+    if (isDefinedDay && Array.isArray(cfg.defined?.questions)) {
+      sourceQuestions = cfg.defined.questions as any[];
+    } else if (Array.isArray(cfg.daily?.questions)) {
+      sourceQuestions = cfg.daily.questions as any[];
+    }
+
+    // Normalize to { id, label, type }
+    todayQuestions = sourceQuestions
+      .map((q: any, idx: number) => {
+        if (q && typeof q === "object" && "id" in q && "label" in q && "type" in q) {
+          return q as { id: string; label: string; type: "text" | "boolean" | "number" };
+        }
+        if (q && typeof q === "object" && "text" in q) {
+          return { id: `q${idx}`, label: String((q as any).text), type: "boolean" as const };
+        }
+        if (typeof q === "string") {
+          return { id: `q${idx}`, label: q, type: "boolean" as const };
+        }
+        return null;
+      })
+      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" }[];
   }
 
   return (
@@ -79,11 +113,15 @@ export default async function Home() {
       )}
 
       {challenge ? (
-        <DailyForm actions={actions} challengeCode={challenge.code} initialSelected={initialSelected} initialNote={initialNote} />
+        <DailyForm actions={actions} challengeCode={challenge.code} initialSelected={initialSelected} initialNote={initialNote} questions={todayQuestions} initialAnswers={todayAnswers} />
       ) : (
         <section className="space-y-2">
           <div className="text-sm">Du bist aktuell keiner Challenge beigetreten.</div>
-          <Link href="/join" className="underline text-blue-600">Jetzt Challenge beitreten</Link>
+          {session ? (
+            <Link href="/join" className="underline text-blue-600">Jetzt Challenge beitreten</Link>
+          ) : (
+            <Link href="/login" className="underline text-blue-600">Zum Beitreten anmelden</Link>
+          )}
         </section>
       )}
     </main>

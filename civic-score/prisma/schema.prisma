@@ -34,6 +34,8 @@ model DayEntry {
   date          DateTime
   note          String? 
   totalScore    Int
+  // Optional JSON payload for structured answers to questions shown on a given day
+  answers       Json?
   // Optional association to a Challenge so entries can be scoped per challenge
   challengeId   String?
   participant   Participant   @relation(fields: [participantId], references: [id])
@@ -61,19 +63,13 @@ model Challenge {
   startDate   DateTime
   endDate     DateTime
   startScore  Int                    @default(0)
-  days        ChallengeDay[]
+  // JSON configuration for quizzes and questions
+  config      Json?
   memberships ChallengeMembership[]
   entries     DayEntry[]
 }
 
-model ChallengeDay {
-  id          String    @id @default(cuid())
-  challengeId String
-  date        DateTime
-  question    String?
-  challenge   Challenge @relation(fields: [challengeId], references: [id])
-  @@unique([challengeId, date])
-}
+// Removed ChallengeDay in favor of JSON config stored on Challenge
 
 model ChallengeMembership {
   id            String      @id @default(cuid())
@@ -91,11 +87,12 @@ model User {
   id            String     @id @default(cuid())
   createdAt     DateTime   @default(now())
   participantId String     @unique
-  displayName   String?
-  email         String?    @unique
+  username      String?    @unique
+  passwordHash  String?
 
   participant   Participant @relation(fields: [participantId], references: [id])
   adminRoles    AdminRole[]
+  sessions      AuthSession[]
 }
 
 // AdminRole grants admin rights to a User. Presence of a record means admin.
@@ -105,4 +102,17 @@ model AdminRole {
   userId    String   @unique
 
   user      User     @relation(fields: [userId], references: [id])
+}
+
+/// Simple session model to support user login sessions
+model AuthSession {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  token     String   @unique
+  userId    String
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }

@@ -20,15 +20,16 @@ import { toast } from "sonner"
 const Schema = z.object({
   selected: z.array(z.string()),
   note: z.string().optional(),
+  answers: z.record(z.any()).optional(),
 });
 type FormData = z.infer<typeof Schema>;
 
-export function DailyForm({ actions, challengeCode, initialSelected, initialNote }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string }) {
+export function DailyForm({ actions, challengeCode, initialSelected, initialNote, questions, initialAnswers }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string; questions?: { id: string; label: string; type: "text" | "boolean" | "number" }[]; initialAnswers?: Record<string, unknown> }) {
   const groups = actions.reduce<Record<string, Action[]>>((acc, a) => {
     (acc[a.category] ||= []).push(a);
     return acc;
   }, {});
-  const form = useForm<FormData>({ resolver: zodResolver(Schema), defaultValues: { selected: initialSelected ?? [], note: initialNote ?? "" }});
+  const form = useForm<FormData>({ resolver: zodResolver(Schema), defaultValues: { selected: initialSelected ?? [], note: initialNote ?? "", answers: initialAnswers ?? {} }});
   const [pending, start] = useTransition();
 
   async function submit(data: FormData) {
@@ -70,6 +71,31 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
           </CardContent>
         </Card>
       ))}
+
+      {questions && questions.length > 0 && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="font-medium">Zusatzfragen</div>
+            {questions.map((q) => (
+              <div key={q.id} className="space-y-1">
+                <div className="text-sm">{q.label}</div>
+                {q.type === "text" && (
+                  <input className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value })} />
+                )}
+                {q.type === "number" && (
+                  <input type="number" className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value ? Number(e.target.value) : undefined })} />
+                )}
+                {q.type === "boolean" && (
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={Boolean(form.watch("answers")?.[q.id])} onChange={(e)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.checked })} />
+                    <span className="text-sm">Ja</span>
+                  </label>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-2">
         <div className="text-sm font-medium">Notiz (optional)</div>
