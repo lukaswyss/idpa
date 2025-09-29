@@ -2,8 +2,10 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import Link from "next/link";
 import { NavTabs } from "@/components/nav-tabs";
+import { getOrCreateUser } from "@/lib/user";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await getOrCreateUser();
   return (
     <html lang="de">
       <body>

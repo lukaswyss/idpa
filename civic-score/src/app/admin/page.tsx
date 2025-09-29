@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { isCurrentUserAdmin } from "@/lib/user";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { format } from "date-fns";
@@ -103,15 +104,46 @@ async function logoutAdmin(): Promise<void> {
   revalidatePath("/admin");
 }
 
+async function grantAdmin(formData: FormData): Promise<void> {
+  "use server";
+  const Schema = z.object({ userId: z.string().min(1) });
+  const parsed = Schema.safeParse({ userId: formData.get("userId") });
+  if (!parsed.success) return;
+  const roleIsAdmin = await isCurrentUserAdmin();
+  if (!roleIsAdmin) return;
+  const user = await prisma.user.findUnique({ where: { id: parsed.data.userId } });
+  if (!user) return;
+  const existing = await prisma.adminRole.findUnique({ where: { userId: user.id } });
+  if (!existing) {
+    await prisma.adminRole.create({ data: { userId: user.id } });
+  }
+  revalidatePath("/admin");
+}
+
+async function revokeAdmin(formData: FormData): Promise<void> {
+  "use server";
+  const Schema = z.object({ userId: z.string().min(1) });
+  const parsed = Schema.safeParse({ userId: formData.get("userId") });
+  if (!parsed.success) return;
+  const roleIsAdmin = await isCurrentUserAdmin();
+  if (!roleIsAdmin) return;
+  const existing = await prisma.adminRole.findUnique({ where: { userId: parsed.data.userId } });
+  if (existing) {
+    await prisma.adminRole.delete({ where: { userId: parsed.data.userId } });
+  }
+  revalidatePath("/admin");
+}
+
 export default async function AdminPage() {
-  // Einfacher Schutz über einen Code in den Request-Headern (z.B. Cookie) gegen .env
+  // Role-based admin in addition to optional code-based gate
   const hdrs: any = await headers();
   const providedHeader = hdrs.get("x-admin-code") || undefined;
   const cookieStore: any = await cookies();
   const providedCookie = cookieStore.get("admin_code")?.value;
   const provided = providedHeader ?? providedCookie;
   const expected = process.env.ADMIN_CODE;
-  if (!expected || provided !== expected) {
+  const roleIsAdmin = await isCurrentUserAdmin();
+  if ((!expected || provided !== expected) && !roleIsAdmin) {
     return (
       <main className="mx-auto max-w-3xl p-6 space-y-6">
         <section className="max-w-md space-y-3">
@@ -127,6 +159,8 @@ export default async function AdminPage() {
   }
 
   const challenges = await (prisma as any).challenge.findMany({ orderBy: { createdAt: "desc" } });
+  const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+  const adminRoles = await prisma.adminRole.findMany();
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-8">
       <h1 className="text-2xl font-semibold">Admin</h1>
@@ -186,6 +220,37 @@ export default async function AdminPage() {
           <button className="bg-red-600 text-white px-3 py-2 rounded" type="submit">Einträge ohne Challenge löschen</button>
         </form>
         <p className="text-xs opacity-70">Löscht DayEntries ohne Challenge und deren verknüpfte Aktionen.</p>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Admins</h2>
+        <div className="space-y-2">
+          {users.map((u: any) => {
+            const isAdmin = adminRoles.some((r: any) => r.userId === u.id);
+            return (
+              <div key={u.id} className="flex items-center justify-between border rounded px-3 py-2">
+                <div className="text-sm">
+                  <div>ID: {u.id}</div>
+                  {u.email ? <div>Email: {u.email}</div> : null}
+                  {u.displayName ? <div>Name: {u.displayName}</div> : null}
+                </div>
+                <div>
+                  {isAdmin ? (
+                    <form action={revokeAdmin}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <button className="text-sm underline" type="submit">Revoke</button>
+                    </form>
+                  ) : (
+                    <form action={grantAdmin}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <button className="text-sm underline" type="submit">Grant</button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
     </main>
   );

@@ -14,6 +14,7 @@ model Participant {
   createdAt  DateTime   @default(now())
   entries    DayEntry[]
   memberships ChallengeMembership[]
+  user       User?
 }
 
 model Action {
@@ -82,4 +83,26 @@ model ChallengeMembership {
   participant   Participant @relation(fields: [participantId], references: [id])
   challenge     Challenge   @relation(fields: [challengeId], references: [id])
   @@unique([participantId, challengeId])
+}
+
+// Users represent visitors of the site and can be anonymous by default.
+// They are linked 1:1 to a Participant for existing data continuity.
+model User {
+  id            String     @id @default(cuid())
+  createdAt     DateTime   @default(now())
+  participantId String     @unique
+  displayName   String?
+  email         String?    @unique
+
+  participant   Participant @relation(fields: [participantId], references: [id])
+  adminRoles    AdminRole[]
+}
+
+// AdminRole grants admin rights to a User. Presence of a record means admin.
+model AdminRole {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String   @unique
+
+  user      User     @relation(fields: [userId], references: [id])
 }

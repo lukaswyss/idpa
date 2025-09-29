@@ -57,7 +57,12 @@ if (!databaseUrl) {
       .filter(Boolean)
       .join("\n");
 
-    if (caBundle) {
+    const allowInsecure = /^(1|true)$/i.test(process.env.ALLOW_INSECURE_TLS ?? "");
+    if (allowInsecure) {
+      const dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
+      neonConfig.fetchFunction = (input: any, init?: any) =>
+        undiciFetch(input as any, { ...(init as any), dispatcher } as any);
+    } else if (caBundle) {
       const dispatcher = new Agent({ connect: { ca: caBundle } });
       neonConfig.fetchFunction = (input: any, init?: any) =>
         undiciFetch(input as any, { ...(init as any), dispatcher } as any);
