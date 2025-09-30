@@ -26,3 +26,8 @@ export const animalGender: Record<string, "m" | "f" | "n"> = {
 };
 
 
+export const adjectives = [
+  "mutig", "flink", "klug", "neugierig", "tapfer", "freundlich", "witzig",
+  "ruhig", "achtsam", "frisch", "schnell", "weise", "wach", "gelassen", "stark", "treu",
+  "listig", "fröhlich", "geduldig", "furchtlos", "kühn", "lebhaft", "smart",
+];

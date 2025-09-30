@@ -6,7 +6,7 @@ import { z } from "zod";
 const BodySchema = z.object({
   selected: z.array(z.string()).default([]),
   note: z.string().optional().default(""),
-  answers: z.record(z.any()).optional().default({}),
+  answers: z.record(z.string(), z.any()).optional().default({}),
   // Challenge Code ist Pflicht: Nur Einträge innerhalb einer Challenge erlaubt
   challengeCode: z.string().min(1),
 });

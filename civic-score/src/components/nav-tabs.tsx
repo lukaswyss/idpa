@@ -27,16 +27,18 @@ export function NavTabs() {
   }, []);
 
   const value =
-    pathname === "/" ? "today" :
+    pathname?.startsWith("/today") ? "today" :
     pathname?.startsWith("/history") ? "history" :
     pathname?.startsWith("/join") ? "join" :
+    pathname?.startsWith("/onboarding") ? "onboarding" :
     pathname?.startsWith("/admin") ? "admin" :
     "";
 
   const handleNavigate = (v: string) => {
-    if (v === "today") router.push("/");
+    if (v === "today") router.push("/today");
     else if (v === "history") router.push("/history");
     else if (v === "join") router.push("/join");
+    else if (v === "onboarding") router.push("/onboarding");
     else if (v === "admin") router.push("/admin");
   };
 
@@ -51,6 +53,7 @@ export function NavTabs() {
           <SelectItem value="today">Heute</SelectItem>
           <SelectItem value="history">Historie</SelectItem>
           <SelectItem value="join">Beitreten</SelectItem>
+          <SelectItem value="onboarding">Onboarding</SelectItem>
           {isAdmin ? <SelectItem value="admin">Admin</SelectItem> : null}
         </SelectContent>
       </Select>
@@ -63,6 +66,7 @@ export function NavTabs() {
         <TabsTrigger value="today">Heute</TabsTrigger>
         <TabsTrigger value="history">Historie</TabsTrigger>
         <TabsTrigger value="join">Beitreten</TabsTrigger>
+        <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
         {isAdmin ? <TabsTrigger value="admin">Admin</TabsTrigger> : null}
       </TabsList>
     </Tabs>

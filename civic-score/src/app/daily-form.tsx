@@ -20,7 +20,7 @@ import { toast } from "sonner"
 const Schema = z.object({
   selected: z.array(z.string()),
   note: z.string().optional(),
-  answers: z.record(z.any()).optional(),
+  answers: z.record(z.string(), z.any()).optional(),
 });
 type FormData = z.infer<typeof Schema>;
 

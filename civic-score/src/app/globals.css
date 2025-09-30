@@ -120,3 +120,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom reverse spin animation */
+@keyframes spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@layer utilities {
+  .animate-spin-reverse {
+    animation: spin-reverse 1s linear infinite;
+  }
+}

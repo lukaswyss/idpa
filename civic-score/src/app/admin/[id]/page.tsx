@@ -6,6 +6,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/date-input";
+import { getSessionUser } from "@/lib/auth";
+import LoginRequired from "@/components/login-required";
 
 async function addQuestionDate(formData: FormData): Promise<void> {
   "use server";
@@ -29,8 +31,21 @@ async function addQuestionDate(formData: FormData): Promise<void> {
 }
 
 export default async function ChallengeDetails({ params }: { params: { id: string } }) {
+  const session = await getSessionUser();
+  if (!session) {
+    return <LoginRequired title="Kein Zugriff" message="Bitte anmelden, um die Admin-Seite zu sehen." />;
+  }
   const roleIsAdmin = await isCurrentUserAdmin();
-  if (!roleIsAdmin) notFound();
+  if (!roleIsAdmin) {
+    return (
+      <main className="mx-auto max-w-3xl p-6 space-y-6">
+        <section className="max-w-md space-y-3">
+          <h1 className="text-2xl font-semibold">Kein Zugriff</h1>
+          <p className="text-sm opacity-70">Nur Admins können diese Seite sehen.</p>
+        </section>
+      </main>
+    );
+  }
 
   const challenge = await (prisma as any).challenge.findUnique({ where: { id: params.id } });
   if (!challenge) notFound();

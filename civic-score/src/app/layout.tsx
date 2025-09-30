@@ -7,6 +7,8 @@ import { getSessionUser } from "@/lib/auth";
 import { ThemeProvider } from "next-themes";
 import ThemeToggle from "../components/theme-toggle";
 
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getSessionUser();
   return (

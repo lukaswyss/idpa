@@ -1,13 +1,24 @@
 import { prisma } from "@/lib/db";
 import { getOrCreateParticipant } from "@/lib/participant";
+import { getSessionUser } from "@/lib/auth";
+import LoginRequired from "@/components/login-required";
 import { format } from "date-fns";
 
 export default async function HistoryPage() {
+  const session = await getSessionUser();
+  if (!session) {
+    return <LoginRequired title="Kein Zugriff" message="Bitte anmelden, um die Historie zu sehen." />;
+  }
   const p = await getOrCreateParticipant();
   const entries = await prisma.dayEntry.findMany({
     where: { participantId: p.id },
     orderBy: { date: "desc" },
-    include: { actions: { include: { action: true } } },
+    select: {
+      id: true,
+      date: true,
+      totalScore: true,
+      actions: { include: { action: true } },
+    },
   });
 
   return (

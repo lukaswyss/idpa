@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { DateInput } from "@/components/date-input";
+import { getSessionUser } from "@/lib/auth";
+import LoginRequired from "@/components/login-required";
 
 async function createChallenge(formData: FormData): Promise<void> {
   "use server";
@@ -134,14 +136,18 @@ async function revokeAdmin(formData: FormData): Promise<void> {
 }
 
 export default async function AdminPage() {
-  // Role-based admin only
+  // Require session; then require admin role
+  const session = await getSessionUser();
+  if (!session) {
+    return <LoginRequired title="Kein Zugriff" message="Bitte anmelden, um die Admin-Seite zu sehen." />;
+  }
   const roleIsAdmin = await isCurrentUserAdmin();
   if (!roleIsAdmin) {
     return (
       <main className="mx-auto max-w-3xl p-6 space-y-6">
         <section className="max-w-md space-y-3">
           <h1 className="text-2xl font-semibold">Kein Zugriff</h1>
-          <p className="text-sm opacity-70">Nur angemeldete Admins können diese Seite sehen.</p>
+          <p className="text-sm opacity-70">Nur Admins können diese Seite sehen.</p>
         </section>
       </main>
     );
