@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { getOrCreateParticipant } from "@/lib/participant";
 import { z } from "zod";
 
@@ -53,13 +54,42 @@ export async function POST(req: NextRequest) {
     if (entry) {
       entry = await (prisma as any).dayEntry.update({
         where: { id: entry.id },
-        data: { note: parsed.data.note, totalScore: total, answers: parsed.data.answers as any },
+        data: { note: parsed.data.note, totalScore: total },
       });
     } else {
       entry = await (prisma as any).dayEntry.create({
-        data: { participantId: participant.id, date: day, note: parsed.data.note, totalScore: total, challengeId, answers: parsed.data.answers as any },
+        data: { participantId: participant.id, date: day, note: parsed.data.note, totalScore: total, challengeId },
       });
     }
+
+    // Persist answers via raw SQL to avoid Prisma Client schema mismatch during rollout
+    try {
+      const hasAnswers = parsed.data.answers && Object.keys(parsed.data.answers).length > 0;
+      if (hasAnswers) {
+        const answersJson = JSON.stringify(parsed.data.answers ?? {});
+        await prisma.$executeRaw(Prisma.sql`UPDATE "DayEntry" SET "answers" = ${answersJson}::jsonb WHERE "id" = ${entry.id}`);
+      } else {
+        await prisma.$executeRaw(Prisma.sql`UPDATE "DayEntry" SET "answers" = NULL WHERE "id" = ${entry.id}`);
+      }
+    } catch {}
+
+    // Mark pre-quiz as completed if pre-answers were submitted
+    try {
+      const cfg: any = (challenge as any)?.config || {};
+      const preId: string | undefined = cfg?.quiz?.preId;
+      const hasPreAnswers = !!preId && Object.keys(parsed.data.answers || {}).some((k) => k.startsWith("pre_"));
+      if (preId && hasPreAnswers) {
+        const currentNote: string = (entry as any)?.note || "";
+        const marker = `quiz:${preId}`;
+        if (!currentNote.includes(marker)) {
+          const spaced = currentNote.length > 0 ? currentNote + " " : "";
+          entry = await (prisma as any).dayEntry.update({
+            where: { id: entry.id },
+            data: { note: spaced + marker },
+          });
+        }
+      }
+    } catch {}
 
     // Link Actions (ersetzen)
     await prisma.entryAction.deleteMany({ where: { dayEntryId: entry.id }});

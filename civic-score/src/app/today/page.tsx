@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { getSessionUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import LoginRequired from "@/components/login-required";
+import { Prisma } from "@prisma/client";
 
 export default async function TodayPage() {
   const session = await getSessionUser();
@@ -54,20 +55,64 @@ export default async function TodayPage() {
       initialSelected = (te.actions || []).map((a: any) => a.actionId);
       initialNote = te.note ?? undefined;
       todayAnswers = te.answers ?? undefined;
+      // Fallback: Prisma Client might not yet include the `answers` field during rollout
+      if (todayAnswers === undefined && te.id) {
+        try {
+          const rows = await prisma.$queryRaw<{ answers: unknown }[]>(
+            Prisma.sql`SELECT "answers" FROM "DayEntry" WHERE "id" = ${te.id} LIMIT 1`
+          );
+          if (rows && rows.length > 0) {
+            todayAnswers = (rows[0] as any)?.answers ?? undefined;
+          }
+        } catch {}
+      }
     }
     days = grid.map((d) => {
       const entry = (entries as any[]).find((e: { date: Date; totalScore: number }) => new Date(e.date).toDateString() === d.toDateString());
       return { date: d, score: entry?.totalScore ?? 0 };
     });
 
-    // Determine today's questions (supports config.defined.days / config.daily.questions)
+    // Determine today's questions with quiz gating: show pre-quiz first until completed
     const cfg: any = challenge.config || {};
     const dayKey = format(day, "yyyy-MM-dd");
     const isDefinedDay = Boolean(
       cfg && cfg.defined && Array.isArray(cfg.defined.days) && cfg.defined.days.includes(dayKey)
     );
+    // Quiz state detection
+    const preId: string | undefined = cfg?.quiz?.preId;
+    const postId: string | undefined = cfg?.quiz?.postId;
+    let preDone = false;
+    let postDone = false;
+    try {
+      if (preId) {
+        preDone = Boolean(
+          await (prisma as any).dayEntry.findFirst({
+            where: ({ participantId: participant.id, challengeId: challenge.id, note: { contains: `quiz:${preId}` } } as any),
+          })
+        );
+      }
+      if (postId) {
+        postDone = Boolean(
+          await (prisma as any).dayEntry.findFirst({
+            where: ({ participantId: participant.id, challengeId: challenge.id, note: { contains: `quiz:${postId}` } } as any),
+          })
+        );
+      }
+    } catch {}
+
+    // Fallback: if no marker yet, infer completion from today's saved answers containing pre_* keys
+    if (!preDone && todayAnswers && typeof todayAnswers === "object") {
+      try {
+        const keys = Object.keys(todayAnswers);
+        if (keys.some((k) => k.startsWith("pre_"))) preDone = true;
+      } catch {}
+    }
+
+    // Choose question source based on gating
     let sourceQuestions: any[] = [];
-    if (isDefinedDay && Array.isArray(cfg.defined?.questions)) {
+    if (!preDone && Array.isArray(cfg?.quiz?.pre?.questions)) {
+      sourceQuestions = cfg.quiz.pre.questions as any[];
+    } else if (isDefinedDay && Array.isArray(cfg.defined?.questions)) {
       sourceQuestions = cfg.defined.questions as any[];
     } else if (Array.isArray(cfg.daily?.questions)) {
       sourceQuestions = cfg.daily.questions as any[];
