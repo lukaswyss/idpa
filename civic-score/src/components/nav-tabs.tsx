@@ -46,8 +46,8 @@ export function NavTabs() {
     const selected = ["today", "history", "join", "admin"].includes(value) ? value : undefined;
     return (
       <Select value={selected} onValueChange={handleNavigate}>
-        <SelectTrigger size="sm" aria-label="Navigation">
-          <SelectValue placeholder="Navigation" />
+        <SelectTrigger size="sm" aria-label="/">
+          <SelectValue placeholder="/" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="today">Heute</SelectItem>
@@ -63,11 +63,11 @@ export function NavTabs() {
   return (
     <Tabs value={value} onValueChange={handleNavigate}>
       <TabsList className="gap-2">
-        <TabsTrigger value="today">Heute</TabsTrigger>
-        <TabsTrigger value="history">Historie</TabsTrigger>
-        <TabsTrigger value="join">Beitreten</TabsTrigger>
-        <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
-        {isAdmin ? <TabsTrigger value="admin">Admin</TabsTrigger> : null}
+          <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="today" onClick={()=> handleNavigate("today")}>Heute</TabsTrigger>
+        <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="history" onClick={()=> handleNavigate("history")}>Historie</TabsTrigger>
+        <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="join" onClick={()=> handleNavigate("join")}>Beitreten</TabsTrigger>
+        <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="onboarding" onClick={()=> handleNavigate("onboarding")}>Onboarding</TabsTrigger>
+        {isAdmin ? <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="admin" onClick={()=> handleNavigate("admin")}>Admin</TabsTrigger> : null}
       </TabsList>
     </Tabs>
   );

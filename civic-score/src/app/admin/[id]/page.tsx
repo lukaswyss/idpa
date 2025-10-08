@@ -1,13 +1,17 @@
 import { prisma } from "@/lib/db";
 import { isCurrentUserAdmin } from "@/lib/user";
 import { notFound } from "next/navigation";
-import { format } from "date-fns";
+import { differenceInDays, format } from "date-fns";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { CopyText } from "@/components/copy-text";
 import { DateInput } from "@/components/date-input";
 import { getSessionUser } from "@/lib/auth";
 import LoginRequired from "@/components/login-required";
+import { ArrowLeftIcon } from "lucide-react";
+import { ExportExcelButton } from "@/components/export-excel-button";
 
 async function addQuestionDate(formData: FormData): Promise<void> {
   "use server";
@@ -158,14 +162,56 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
 
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">{challenge.title}</h1>
-      <div className="text-sm opacity-70">Code {challenge.code} – {format(challenge.startDate, "dd.MM.yyyy")}–{format(challenge.endDate, "dd.MM.yyyy")}</div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-2xl font-semibold">{challenge.title}</h1>
+        <Link href="/admin" className="text-sm underline"><Button variant="outline"><ArrowLeftIcon />Zurück zur Admin-Übersicht</Button></Link>
+      </div>
+      <div className="flex items-center justify-between w-full">
+        <CopyText value={challenge.code} label="Zugangscode" />
+        <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
+      </div>
+      <div className="text-lg opacity-70">{format(challenge.startDate, "dd.MM.yyyy")}–{format(challenge.endDate, "dd.MM.yyyy")} ({differenceInDays(challenge.endDate, challenge.startDate) + 1} Tage)</div>
+
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">A/B‑Testing</h2>
+        <div className="text-sm">Status: <strong>{(challenge as any).abEnabled ? "aktiv" : "inaktiv"}</strong></div>
+        <form action={async () => {
+          "use server";
+          await (prisma as any).challenge.update({ where: { id: challenge.id }, data: { abEnabled: !(challenge as any).abEnabled } });
+          revalidatePath(`/admin/${challenge.id}`);
+        }}>
+          <Button type="submit" variant="outline">{(challenge as any).abEnabled ? "A/B deaktivieren" : "A/B aktivieren"}</Button>
+        </form>
+      </section>
 
       <section className="space-y-2">
         <h2 className="text-lg font-medium">Mitglieder ({memberships.length})</h2>
+        <div className="text-sm">A/B‑Testing: <strong>{(challenge as any).abEnabled ? "aktiv" : "inaktiv"}</strong></div>
         <ul className="text-sm list-disc pl-5">
           {memberships.map((m: any) => (
-            <li key={m.id}>{m.participant.id}</li>
+            <li key={m.id} className="flex items-center gap-2">
+              <span>{m.participant.id}</span>
+              <span className="opacity-70">{m.abGroup ? `(Gruppe ${m.abGroup})` : ""}</span>
+              {(challenge as any).abEnabled && (
+                <form action={async (formData: FormData) => {
+                  "use server";
+                  const id = String(formData.get("id"));
+                  const group = String(formData.get("group")) as "A" | "B" | "";
+                  if (!id) return;
+                  await (prisma as any).challengeMembership.update({ where: { id }, data: { abGroup: group === "A" ? "A" : group === "B" ? "B" : null } });
+                  revalidatePath(`/admin/${challenge.id}`);
+                }} className="inline-flex items-center gap-1">
+                  <input type="hidden" name="id" value={m.id} />
+                  <select name="group" defaultValue={m.abGroup ?? ""} className="border rounded px-1 py-0.5 text-xs">
+                    <option value="">–</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                  </select>
+                  <button className="underline text-xs" type="submit">Speichern</button>
+                </form>
+              )}
+            </li>
           ))}
         </ul>
       </section>

@@ -24,7 +24,7 @@ const Schema = z.object({
 });
 type FormData = z.infer<typeof Schema>;
 
-export function DailyForm({ actions, challengeCode, initialSelected, initialNote, questions, initialAnswers }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string; questions?: { id: string; label: string; type: "text" | "boolean" | "number" }[]; initialAnswers?: Record<string, unknown> }) {
+export function DailyForm({ actions, challengeCode, initialSelected, initialNote, questions, initialAnswers, abMode, abGroup }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string; questions?: { id: string; label: string; type: "text" | "boolean" | "number" }[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B" }) {
   const groups = actions.reduce<Record<string, Action[]>>((acc, a) => {
     (acc[a.category] ||= []).push(a);
     return acc;
@@ -42,6 +42,7 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
     else toast.error("Fehler", { description: "Konnte nicht speichern." });
   }
 
+  const hideWeights = Boolean(abMode && abGroup === "B");
   return (
     <form
       onSubmit={form.handleSubmit((d)=> start(()=> submit(d)))}
@@ -65,7 +66,12 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
                     form.setValue("selected", Array.from(arr));
                   }}
                 />
-                <span>{a.label} <span className="text-xs opacity-60">({a.weight>0?`+${a.weight}`:a.weight})</span></span>
+                <span>
+                  {a.label}
+                  {!hideWeights && (
+                    <span className="text-xs opacity-60"> ({a.weight>0?`+${a.weight}`:a.weight})</span>
+                  )}
+                </span>
               </label>
             ))}
           </CardContent>

@@ -63,6 +63,7 @@ model Challenge {
   startDate   DateTime
   endDate     DateTime
   startScore  Int                    @default(0)
+  abEnabled   Boolean                @default(false)
   // JSON configuration for quizzes and questions
   config      Json?
   memberships ChallengeMembership[]
@@ -76,9 +77,15 @@ model ChallengeMembership {
   participantId String
   challengeId   String
   joinedAt      DateTime    @default(now())
+  abGroup       AbGroup?
   participant   Participant @relation(fields: [participantId], references: [id])
   challenge     Challenge   @relation(fields: [challengeId], references: [id])
   @@unique([participantId, challengeId])
+}
+
+enum AbGroup {
+  A
+  B
 }
 
 // Users represent visitors of the site and can be anonymous by default.

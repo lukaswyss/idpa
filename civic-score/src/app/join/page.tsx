@@ -24,8 +24,11 @@ async function joinChallenge(formData: FormData): Promise<void> {
   });
   if (!existing) {
     try {
+      // Assign A/B group if enabled for this challenge
+      const abEnabled: boolean = Boolean((challenge as any).abEnabled);
+      const abGroup: "A" | "B" | undefined = abEnabled ? (Math.random() < 0.5 ? "A" : "B") : undefined;
       await (prisma as any).challengeMembership.create({
-        data: { participantId: participant.id, challengeId: challenge.id },
+        data: { participantId: participant.id, challengeId: challenge.id, abGroup },
       });
       // Falls Startscore > 0: Basis-Eintrag am Challenge-Starttag anlegen
       if (challenge.startDate && (challenge as any).startScore && (challenge as any).startScore > 0) {
