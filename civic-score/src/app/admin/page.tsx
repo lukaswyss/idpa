@@ -14,6 +14,7 @@ import { getSessionUser } from "@/lib/auth";
 import { generateUniqueChallengeCode } from "@/lib/challenge";
 import LoginRequired from "@/components/login-required";
 import { CreateChallengeForm } from "@/components/create-challenge-form";
+import { CreateChallengeDialog } from "@/components/create-challenge-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusIcon } from "lucide-react";
 
@@ -231,6 +232,10 @@ async function revokeAdmin(formData: FormData): Promise<void> {
   if (!parsed.success) return;
   const roleIsAdmin = await isCurrentUserAdmin();
   if (!roleIsAdmin) return;
+  const session = await getSessionUser();
+  if (!session) return;
+  // Prevent an admin from revoking their own admin rights
+  if (parsed.data.userId === session.id) return;
   const existing = await prisma.adminRole.findUnique({ where: { userId: parsed.data.userId } });
   if (existing) {
     await prisma.adminRole.delete({ where: { userId: parsed.data.userId } });
@@ -278,19 +283,7 @@ export default async function AdminPage() {
             <div className="flex items-center justify-between">
 
               <h2 className="text-lg font-medium">Challenges</h2>
-              <Dialog>
-                <div className="flex items-center justify-between">
-                  <DialogTrigger asChild>
-                    <Button><PlusIcon />Neue Challenge</Button>
-                  </DialogTrigger>
-                </div>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Neue Challenge</DialogTitle>
-                  </DialogHeader>
-                  <CreateChallengeForm action={createChallenge} />
-                </DialogContent>
-              </Dialog>
+              <CreateChallengeDialog action={createChallenge} />
             </div>
             <ul className="space-y-2">
               {challenges.map((c: any) => (
@@ -299,7 +292,9 @@ export default async function AdminPage() {
                     <Link className="underline" href={`/admin/${c.id}`}>{c.title}</Link> ({c.code}) – {format(c.startDate, "dd.MM.yyyy")}–{format(c.endDate, "dd.MM.yyyy")}
                   </span>
                   <AlertDialog>
-                    <AlertDialogTrigger className="text-red-600 underline"><Button variant="destructive">Löschen</Button></AlertDialogTrigger>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive">Löschen</Button>
+                    </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Challenge löschen?</AlertDialogTitle>
@@ -372,15 +367,20 @@ export default async function AdminPage() {
             <div className="space-y-2">
               {users.map((u: any) => {
                 const isAdmin = adminRoles.some((r: any) => r.userId === u.id);
+                const isSelf = u.id === session.id;
                 return (
                   <div key={u.id} className="flex items-center justify-between border rounded px-3 py-2">
                     <div className="text-sm">ID: {u.id}{u.username ? ` · ${u.username}` : ""}</div>
                     <div>
                       {isAdmin ? (
-                        <form action={revokeAdmin}>
-                          <input type="hidden" name="userId" value={u.id} />
-                          <Button variant="link" className="text-sm p-0 h-auto" type="submit">Revoke</Button>
-                        </form>
+                        isSelf ? (
+                          <Button variant="link" className="text-sm p-0 h-auto" disabled>Revoke</Button>
+                        ) : (
+                          <form action={revokeAdmin}>
+                            <input type="hidden" name="userId" value={u.id} />
+                            <Button variant="link" className="text-sm p-0 h-auto" type="submit">Revoke</Button>
+                          </form>
+                        )
                       ) : (
                         <form action={grantAdmin}>
                           <input type="hidden" name="userId" value={u.id} />

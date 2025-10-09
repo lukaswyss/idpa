@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner"
+import { Rating, RatingButton } from "@/components/ui/shadcn-io/rating";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Schema = z.object({
   selected: z.array(z.string()),
@@ -24,7 +26,7 @@ const Schema = z.object({
 });
 type FormData = z.infer<typeof Schema>;
 
-export function DailyForm({ actions, challengeCode, initialSelected, initialNote, questions, initialAnswers, abMode, abGroup }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string; questions?: { id: string; label: string; type: "text" | "boolean" | "number" }[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B" }) {
+export function DailyForm({ actions, challengeCode, initialSelected, initialNote, questions, initialAnswers, abMode, abGroup }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string; questions?: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B" }) {
   const groups = actions.reduce<Record<string, Action[]>>((acc, a) => {
     (acc[a.category] ||= []).push(a);
     return acc;
@@ -78,6 +80,20 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
         </Card>
       ))}
 
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="font-medium">Tagesbewertung</div>
+          <Rating
+            value={Number((form.watch("answers") as any)?.rating) || 0}
+            onValueChange={(v)=> form.setValue("answers", { ...(form.getValues("answers")||{}), rating: v })}
+          >
+            {Array.from({ length: 5 }).map((_, index) => (
+              <RatingButton key={index} />
+            ))}
+          </Rating>
+        </CardContent>
+      </Card>
+
       {questions && questions.length > 0 && (
         <Card>
           <CardContent className="p-4 space-y-3">
@@ -96,6 +112,33 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
                     <input type="checkbox" checked={Boolean(form.watch("answers")?.[q.id])} onChange={(e)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.checked })} />
                     <span className="text-sm">Ja</span>
                   </label>
+                )}
+                {q.type === "select" && Array.isArray((q as any).items) && (
+                  <Select
+                    value={String((form.watch("answers")?.[q.id] as any) ?? "")}
+                    onValueChange={(v)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(q as any).items.map((opt: any) => (
+                        <SelectItem key={String(opt.id)} value={String(opt.id)}>{String(opt.label ?? opt.id)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {q.type === "stars" && (
+                  <div className="py-1">
+                    <Rating
+                      value={Number((form.watch("answers") as any)?.[q.id]) || 0}
+                      onValueChange={(v)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v })}
+                    >
+                      {Array.from({ length: typeof (q as any).stars === "number" ? (q as any).stars : 5 }).map((_, index) => (
+                        <RatingButton key={index} />
+                      ))}
+                    </Rating>
+                  </div>
                 )}
               </div>
             ))}

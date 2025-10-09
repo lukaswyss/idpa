@@ -27,7 +27,7 @@ const CreateChallengeSchema = z.object({
 
 type CreateChallengeValues = z.input<typeof CreateChallengeSchema>;
 
-export function CreateChallengeForm({ action }: { action: (formData: FormData) => Promise<{ ok: boolean; id?: string; code?: string; title?: string; error?: string }> }) {
+export function CreateChallengeForm({ action, onSuccess }: { action: (formData: FormData) => Promise<{ ok: boolean; id?: string; code?: string; title?: string; error?: string }>; onSuccess?: (result: { ok: boolean; id?: string; code?: string; title?: string; error?: string }) => void }) {
   const todayDefault = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
   const form = useForm<CreateChallengeValues>({
     resolver: zodResolver(CreateChallengeSchema),
@@ -58,6 +58,7 @@ export function CreateChallengeForm({ action }: { action: (formData: FormData) =
       const { toast } = await import("sonner");
       if (res?.ok) {
         toast.success(`Challenge erstellt: ${res.title} (${res.code})`);
+        onSuccess?.(res);
       } else {
         toast.error(res?.error || "Erstellen fehlgeschlagen");
       }
@@ -88,7 +89,9 @@ export function CreateChallengeForm({ action }: { action: (formData: FormData) =
           render={({ field }) => (
             <FormItem className="col-span-2">
               <div className="flex items-center gap-3">
-                <Checkbox checked={field.value} onCheckedChange={(v)=> field.onChange(Boolean(v))} />
+                <FormControl>
+                  <Checkbox checked={field.value} onCheckedChange={(checked)=> field.onChange(Boolean(checked))} />
+                </FormControl>
                 <FormLabel className="!mt-0">A/B‑Testing aktivieren</FormLabel>
               </div>
               <FormDescription>Wenn aktiviert, werden neue Teilnehmer zufällig in Gruppe A oder B eingeteilt.</FormDescription>
@@ -181,7 +184,7 @@ export function CreateChallengeForm({ action }: { action: (formData: FormData) =
               </div>
               <FormControl>
                 <div className="relative">
-                  <Textarea className="min-h-40 max-h-[50vh] overflow-auto pr-10" placeholder='{"quizBefore":{...},"quizAfter":{...},"defined":{...},"daily":{...}}' {...field} />
+                  <Textarea className="min-h-40 max-h-[30vh] overflow-auto pr-10 text-sm/0" placeholder='{"quizBefore":{...},"quizAfter":{...},"defined":{...},"daily":{...}}' {...field} />
                   {Boolean(form.watch("config")) && (
                     <Button
                       type="button"

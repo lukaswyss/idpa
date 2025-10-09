@@ -39,7 +39,7 @@ export default async function TodayPage() {
   let days: { date: Date; score: number }[] = [];
   let initialSelected: string[] = [];
   let initialNote: string | undefined = undefined;
-  let todayQuestions: { id: string; label: string; type: "text" | "boolean" | "number" }[] = [];
+  let todayQuestions: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] = [];
   let todayAnswers: Record<string, unknown> | undefined = undefined;
   let preDone = false;
   let postDone = false;
@@ -134,11 +134,14 @@ export default async function TodayPage() {
       sourceQuestions = cfg.daily.questions as any[];
     }
 
-    // Normalize to { id, label, type }
+    // Normalize to { id, label, type, items?, stars? }
     todayQuestions = sourceQuestions
       .map((q: any, idx: number) => {
         if (q && typeof q === "object" && "id" in q && "label" in q && "type" in q) {
-          return q as { id: string; label: string; type: "text" | "boolean" | "number" };
+          const t = (q as any).type;
+          if (t === "text" || t === "boolean" || t === "number" || t === "select" || t === "stars") {
+            return q as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number };
+          }
         }
         if (q && typeof q === "object" && "text" in q) {
           return { id: `q${idx}`, label: String((q as any).text), type: "boolean" as const };
@@ -148,7 +151,7 @@ export default async function TodayPage() {
         }
         return null;
       })
-      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" }[];
+      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[];
 
     // Weekly and end-of-challenge signals
     showWeekly = hasWeeklyConfig(cfg) && isWeeklyDue(cfg, day);

@@ -91,11 +91,14 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
   const definedDays = Array.from(definedDaysSet).sort();
 
   // Helper to normalize mixed question formats to { id, label, type }
-  const normalizeQuestions = (arr: any[]): { id: string; label: string; type: "text" | "boolean" | "number" }[] => {
+  const normalizeQuestions = (arr: any[]): { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] => {
     return (arr || [])
       .map((q: any, idx: number) => {
         if (q && typeof q === "object" && "id" in q && "label" in q && "type" in q) {
-          return q as { id: string; label: string; type: "text" | "boolean" | "number" };
+          const t = (q as any).type;
+          if (t === "text" || t === "boolean" || t === "number" || t === "select" || t === "stars") {
+            return q as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number };
+          }
         }
         if (q && typeof q === "object" && "text" in q) {
           return { id: `q${idx}`, label: String((q as any).text), type: "boolean" as const };
@@ -105,7 +108,7 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
         }
         return null;
       })
-      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" }[];
+      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[];
   };
 
   // Extract questions from config across supported shapes
@@ -237,7 +240,10 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-medium">Quiz & Fragenübersicht</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Quiz & Fragenübersicht</h2>
+          <Link href={`/admin/${challenge.id}/preview`}><Button variant="outline">Fragen vorschau</Button></Link>
+        </div>
 
         <div className="space-y-2">
           <h3 className="font-medium">Pre-Quiz {preQuizId ? `(ID: ${preQuizId})` : ""}</h3>
@@ -245,8 +251,8 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
             <div className="text-sm opacity-70">Keine Fragen konfiguriert</div>
           ) : (
             <ul className="list-disc pl-5 text-sm">
-              {preQuestions.map((q) => (
-                <li key={`pre-${q.id}`}>{q.label} <span className="opacity-60 text-xs">[{q.type}]</span></li>
+              {preQuestions.map((q, idx) => (
+                <li key={`pre-${q.id}-${idx}`}>{q.label} <span className="opacity-60 text-xs">[{q.type}]</span></li>
               ))}
             </ul>
           )}
@@ -258,8 +264,8 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
             <div className="text-sm opacity-70">Keine Fragen konfiguriert</div>
           ) : (
             <ul className="list-disc pl-5 text-sm">
-              {postQuestions.map((q) => (
-                <li key={`post-${q.id}`}>{q.label} <span className="opacity-60 text-xs">[{q.type}]</span></li>
+              {postQuestions.map((q, idx) => (
+                <li key={`post-${q.id}-${idx}`}>{q.label} <span className="opacity-60 text-xs">[{q.type}]</span></li>
               ))}
             </ul>
           )}
@@ -271,8 +277,8 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
             <div className="text-sm opacity-70">Keine Fragen konfiguriert</div>
           ) : (
             <ul className="list-disc pl-5 text-sm">
-              {dailyQuestions.map((q) => (
-                <li key={`daily-${q.id}`}>{q.label} <span className="opacity-60 text-xs">[{q.type}]</span></li>
+              {dailyQuestions.map((q, idx) => (
+                <li key={`daily-${q.id}-${idx}`}>{q.label} <span className="opacity-60 text-xs">[{q.type}]</span></li>
               ))}
             </ul>
           )}
@@ -284,8 +290,8 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
             <div className="text-sm opacity-70">Keine Fragen konfiguriert</div>
           ) : (
             <ul className="list-disc pl-5 text-sm">
-              {definedQuestions.map((q) => (
-                <li key={`def-${q.id}`}>{q.label} <span className="opacity-60 text-xs">[{q.type}]</span></li>
+              {definedQuestions.map((q, idx) => (
+                <li key={`def-${q.id}-${idx}`}>{q.label} <span className="opacity-60 text-xs">[{q.type}]</span></li>
               ))}
             </ul>
           )}
