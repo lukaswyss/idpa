@@ -5,13 +5,14 @@ import { getSessionUser } from "@/lib/auth";
 import { isCurrentUserAdmin } from "@/lib/user";
 import { differenceInDays, format } from "date-fns";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
   const session = await getSessionUser();
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
   const admin = await isCurrentUserAdmin();
   if (!admin) return new NextResponse("Forbidden", { status: 403 });
 
-  const challenge = await (prisma as any).challenge.findUnique({ where: { id: params.id } });
+  const challenge = await (prisma as any).challenge.findUnique({ where: { id } });
   if (!challenge) return new NextResponse("Not found", { status: 404 });
 
   // Fetch data

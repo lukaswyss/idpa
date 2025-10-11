@@ -38,6 +38,21 @@ export async function POST(req: NextRequest) {
     // Basis: Score aus explizit ausgewählten Aktionen
     const totalFromActions = actions.reduce((sum: number, a: { weight: number }) => sum + a.weight, 0);
 
+    // Score aus Challenge-abhängigen Antworten wird nach dem Laden der Challenge berechnet
+
+    // Challenge-Kontext per Code ermitteln und Mitgliedschaft erzwingen
+    const challenge = await (prisma as any).challenge.findUnique({ where: { code: parsed.data.challengeCode.trim() } });
+    if (!challenge) {
+      return NextResponse.json({ ok: false, error: "Unbekannte Challenge" }, { status: 400 });
+    }
+    const membership = await (prisma as any).challengeMembership.findUnique({
+      where: { participantId_challengeId: { participantId: participant.id, challengeId: challenge.id } },
+    });
+    if (!membership) {
+      return NextResponse.json({ ok: false, error: "Nicht Mitglied der Challenge" }, { status: 403 });
+    }
+    const challengeId: string | undefined = challenge.id;
+
     // Zusätzlicher Score: aus beantworteten, gewichteten Questions der Challenge-Config
     const cfg: any = (challenge as any)?.config || {};
     const weightByQuestionId: Record<string, number> = {};
@@ -70,19 +85,6 @@ export async function POST(req: NextRequest) {
     }
 
     const total = totalFromActions + totalFromAnswers;
-
-    // Challenge-Kontext per Code ermitteln und Mitgliedschaft erzwingen
-    const challenge = await (prisma as any).challenge.findUnique({ where: { code: parsed.data.challengeCode.trim() } });
-    if (!challenge) {
-      return NextResponse.json({ ok: false, error: "Unbekannte Challenge" }, { status: 400 });
-    }
-    const membership = await (prisma as any).challengeMembership.findUnique({
-      where: { participantId_challengeId: { participantId: participant.id, challengeId: challenge.id } },
-    });
-    if (!membership) {
-      return NextResponse.json({ ok: false, error: "Nicht Mitglied der Challenge" }, { status: 403 });
-    }
-    const challengeId: string | undefined = challenge.id;
 
     // Upsert Tages-Eintrag
     // Kein Upsert im HTTP-Modus: erst suchen, dann update/create
@@ -132,7 +134,6 @@ export async function POST(req: NextRequest) {
 
     // Mark pre-quiz as completed if pre-answers were submitted
     try {
-      const cfg: any = (challenge as any)?.config || {};
       const preId: string | undefined = cfg?.quiz?.preId;
       const hasPreAnswers = !!preId && Object.keys(parsed.data.answers || {}).some((k) => k.startsWith("pre_"));
       if (preId && hasPreAnswers) {
