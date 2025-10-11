@@ -81,7 +81,7 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
     try {
       const d = new Date(iso);
       definedDaysSet.add(format(d, "yyyy-MM-dd"));
-    } catch {}
+    } catch { }
   }
   if (cfg?.defined?.days && Array.isArray(cfg.defined.days)) {
     for (const d of cfg.defined.days as string[]) {
@@ -169,23 +169,39 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
         <h1 className="text-2xl font-semibold">{challenge.title}</h1>
         <Link href="/admin" className="text-sm underline"><Button variant="outline"><ArrowLeftIcon />Zurück zur Admin-Übersicht</Button></Link>
       </div>
-      <div className="flex items-center justify-between w-full">
-        <CopyText value={challenge.code} label="Zugangscode" />
-        <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
-      </div>
-      <div className="text-lg opacity-70">{format(challenge.startDate, "dd.MM.yyyy")}–{format(challenge.endDate, "dd.MM.yyyy")} ({differenceInDays(challenge.endDate, challenge.startDate) + 1} Tage)</div>
 
 
-      <section className="space-y-2">
-        <h2 className="text-lg font-medium">A/B‑Testing</h2>
-        <div className="text-sm">Status: <strong>{(challenge as any).abEnabled ? "aktiv" : "inaktiv"}</strong></div>
-        <form action={async () => {
-          "use server";
-          await (prisma as any).challenge.update({ where: { id: challenge.id }, data: { abEnabled: !(challenge as any).abEnabled } });
-          revalidatePath(`/admin/${challenge.id}`);
-        }}>
-          <Button type="submit" variant="outline">{(challenge as any).abEnabled ? "A/B deaktivieren" : "A/B aktivieren"}</Button>
-        </form>
+
+      <section className="space-y-1">
+        <div className="flex items-center justify-between w-full">
+          <CopyText value={challenge.code} label="Zugangscode" />
+          <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm opacity-70">Zeitraum</span>
+          <code className="px-2 py-1 rounded border bg-accent/40 text-sm font-mono select-all">
+            {format(challenge.startDate, "dd.MM.yyyy")}–{format(challenge.endDate, "dd.MM.yyyy")} ({differenceInDays(challenge.endDate, challenge.startDate) + 1} Tage)
+          </code>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm opacity-70">Startpunkte</span>
+          <code className="px-2 py-1 rounded border bg-accent/40 text-sm font-mono select-all">
+            {challenge.startScore}
+          </code>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm opacity-70">A/B‑Testing</span>
+          <code className="px-2 py-1 rounded border bg-accent/40 text-sm font-mono select-all">
+            {(challenge as any).abEnabled ? "aktiv" : "inaktiv"}
+          </code>
+          <form action={async () => {
+            "use server";
+            await (prisma as any).challenge.update({ where: { id: challenge.id }, data: { abEnabled: !(challenge as any).abEnabled } });
+            revalidatePath(`/admin/${challenge.id}`);
+          }}>
+            <Button type="submit" size="sm" variant="outline">{(challenge as any).abEnabled ? "A/B deaktivieren" : "A/B aktivieren"}</Button>
+          </form>
+        </div>
       </section>
 
       <section className="space-y-2">

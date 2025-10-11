@@ -36,6 +36,11 @@ model DayEntry {
   totalScore    Int
   // Optional JSON payload for structured answers to questions shown on a given day
   answers       Json?
+  // Timing metrics: first/last answer timestamps and derived duration in ms
+  firstAnswerAt DateTime?
+  lastAnswerAt  DateTime?
+  submittedAt   DateTime?
+  durationMs    Int?
   // Optional association to a Challenge so entries can be scoped per challenge
   challengeId   String?
   participant   Participant   @relation(fields: [participantId], references: [id])
@@ -96,6 +101,8 @@ model User {
   participantId String     @unique
   username      String?    @unique
   passwordHash  String?
+  // Count of successful interactive logins
+  loginCount    Int        @default(0)
 
   participant   Participant @relation(fields: [participantId], references: [id])
   adminRoles    AdminRole[]

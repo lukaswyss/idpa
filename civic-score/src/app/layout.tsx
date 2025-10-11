@@ -10,6 +10,8 @@ import { ChallengeSwitcher } from "@/components/challenge-switcher";
 import { prisma } from "@/lib/db";
 import { getOrCreateParticipant } from "@/lib/participant";
 import { getSelectedChallengeCode } from "@/lib/challenge";
+import { getOnboardingTasks } from "@/lib/onboarding-tasks";
+import TaskListButton from "@/components/task-list-button";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     } catch {}
     return { id: ch.id as string, code: ch.code as string, title: ch.title as string, openToday, selected: ch.code === selectedCode };
   }));
+  const tasks = await getOnboardingTasks(participant.id, !!session);
   return (
     <html lang="de" suppressHydrationWarning>
       <body>
@@ -45,6 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {session ? <NavTabs /> : <div />}
             <div className="flex items-center gap-3">
               {session && items.length > 0 ? <ChallengeSwitcher items={items} /> : null}
+              {session ? <TaskListButton items={tasks} /> : null}
               <ThemeToggle />
               <UserButton />
             </div>

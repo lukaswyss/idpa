@@ -10,6 +10,10 @@ const BodySchema = z.object({
   answers: z.record(z.string(), z.any()).optional().default({}),
   // Challenge Code ist Pflicht: Nur Einträge innerhalb einer Challenge erlaubt
   challengeCode: z.string().min(1),
+  firstAnswerAt: z.string().datetime().optional(),
+  lastAnswerAt: z.string().datetime().optional(),
+  submittedAt: z.string().datetime().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -31,7 +35,41 @@ export async function POST(req: NextRequest) {
     const actions = uniqueIds.length
       ? await prisma.action.findMany({ where: { id: { in: uniqueIds } }})
       : [];
-    const total = actions.reduce((sum: number, a: { weight: number }) => sum + a.weight, 0);
+    // Basis: Score aus explizit ausgewählten Aktionen
+    const totalFromActions = actions.reduce((sum: number, a: { weight: number }) => sum + a.weight, 0);
+
+    // Zusätzlicher Score: aus beantworteten, gewichteten Questions der Challenge-Config
+    const cfg: any = (challenge as any)?.config || {};
+    const weightByQuestionId: Record<string, number> = {};
+    const candidates: any[] = [
+      Array.isArray(cfg?.daily?.questions) ? cfg.daily.questions : [],
+      Array.isArray(cfg?.defined?.questions) ? cfg.defined.questions : [],
+      Array.isArray(cfg?.quiz?.pre?.questions) ? cfg.quiz.pre.questions : [],
+      Array.isArray(cfg?.quiz?.post?.questions) ? cfg.quiz.post.questions : [],
+    ].flat();
+    for (const q of candidates) {
+      const id = (q as any)?.id;
+      const w = (q as any)?.weight;
+      if (id && typeof w === "number" && Number.isFinite(w)) {
+        weightByQuestionId[id] = w;
+      }
+    }
+    let totalFromAnswers = 0;
+    const answersObj = parsed.data.answers || {};
+    for (const [qid, value] of Object.entries(answersObj)) {
+      const w = weightByQuestionId[qid];
+      if (typeof w !== "number" || !Number.isFinite(w) || w === 0) continue;
+      if (typeof value === "boolean") {
+        if (value) totalFromAnswers += w;
+      } else if (typeof value === "number" && Number.isFinite(value)) {
+        // Optional: numerische Antworten gewichten (z. B. Sternezahl * Gewicht)
+        totalFromAnswers += Math.round(value * w);
+      } else {
+        // Andere Antworttypen (Text/Select) werden nicht auf den Score angerechnet
+      }
+    }
+
+    const total = totalFromActions + totalFromAnswers;
 
     // Challenge-Kontext per Code ermitteln und Mitgliedschaft erzwingen
     const challenge = await (prisma as any).challenge.findUnique({ where: { code: parsed.data.challengeCode.trim() } });
@@ -62,15 +100,34 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Persist answers via raw SQL to avoid Prisma Client schema mismatch during rollout
+    // Persist answers & timing via raw SQL to avoid Prisma Client schema mismatch during rollout
     try {
       const hasAnswers = parsed.data.answers && Object.keys(parsed.data.answers).length > 0;
-      if (hasAnswers) {
-        const answersJson = JSON.stringify(parsed.data.answers ?? {});
-        await prisma.$executeRaw(Prisma.sql`UPDATE "DayEntry" SET "answers" = ${answersJson}::jsonb WHERE "id" = ${entry.id}`);
-      } else {
-        await prisma.$executeRaw(Prisma.sql`UPDATE "DayEntry" SET "answers" = NULL WHERE "id" = ${entry.id}`);
-      }
+      const firstAt = parsed.data.firstAnswerAt ? new Date(parsed.data.firstAnswerAt) : null;
+      const lastAt = parsed.data.lastAnswerAt ? new Date(parsed.data.lastAnswerAt) : null;
+      const submittedAt = parsed.data.submittedAt ? new Date(parsed.data.submittedAt) : new Date();
+      const durationMs = typeof parsed.data.durationMs === "number" && parsed.data.durationMs >= 0
+        ? parsed.data.durationMs
+        : (firstAt && lastAt ? Math.max(0, lastAt.getTime() - firstAt.getTime()) : null);
+
+      const answersSql = hasAnswers
+        ? Prisma.sql`${JSON.stringify(parsed.data.answers ?? {})}::jsonb`
+        : Prisma.sql`NULL`;
+      const firstSql = firstAt ? Prisma.sql`${firstAt.toISOString()}` : Prisma.sql`NULL`;
+      const lastSql = lastAt ? Prisma.sql`${lastAt.toISOString()}` : Prisma.sql`NULL`;
+      const subSql = submittedAt ? Prisma.sql`${submittedAt.toISOString()}` : Prisma.sql`NULL`;
+      const durSql = durationMs !== null ? Prisma.sql`${durationMs}` : Prisma.sql`NULL`;
+
+      await prisma.$executeRaw(Prisma.sql`
+        UPDATE "DayEntry"
+        SET
+          "answers" = ${answersSql},
+          "firstAnswerAt" = ${firstSql}::timestamptz,
+          "lastAnswerAt" = ${lastSql}::timestamptz,
+          "submittedAt" = ${subSql}::timestamptz,
+          "durationMs" = ${durSql}
+        WHERE "id" = ${entry.id}
+      `);
     } catch {}
 
     // Mark pre-quiz as completed if pre-answers were submitted

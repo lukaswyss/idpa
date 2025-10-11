@@ -30,7 +30,7 @@ export function NavTabs() {
     pathname?.startsWith("/today") ? "today" :
     pathname?.startsWith("/history") ? "history" :
     pathname?.startsWith("/join") ? "join" :
-    pathname?.startsWith("/onboarding") ? "onboarding" :
+    pathname?.startsWith("/info") ? "info" :
     pathname?.startsWith("/admin") ? "admin" :
     "";
 
@@ -38,12 +38,12 @@ export function NavTabs() {
     if (v === "today") router.push("/today");
     else if (v === "history") router.push("/history");
     else if (v === "join") router.push("/join");
-    else if (v === "onboarding") router.push("/onboarding");
+    else if (v === "info") router.push("/info");
     else if (v === "admin") router.push("/admin");
   };
 
   if (isMobile) {
-    const selected = ["today", "history", "join", "admin"].includes(value) ? value : undefined;
+    const selected = ["today", "history", "join", "info", "admin"].includes(value) ? value : undefined;
     return (
       <Select value={selected} onValueChange={handleNavigate}>
         <SelectTrigger size="sm" aria-label="/">
@@ -53,7 +53,7 @@ export function NavTabs() {
           <SelectItem value="today">Heute</SelectItem>
           <SelectItem value="history">Historie</SelectItem>
           <SelectItem value="join">Beitreten</SelectItem>
-          <SelectItem value="onboarding">Onboarding</SelectItem>
+          <SelectItem value="info">Info</SelectItem>
           {isAdmin ? <SelectItem value="admin">Admin</SelectItem> : null}
         </SelectContent>
       </Select>
@@ -66,7 +66,7 @@ export function NavTabs() {
           <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="today" onClick={()=> handleNavigate("today")}>Heute</TabsTrigger>
         <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="history" onClick={()=> handleNavigate("history")}>Historie</TabsTrigger>
         <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="join" onClick={()=> handleNavigate("join")}>Beitreten</TabsTrigger>
-        <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="onboarding" onClick={()=> handleNavigate("onboarding")}>Onboarding</TabsTrigger>
+        <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="info" onClick={()=> handleNavigate("info")}>Info</TabsTrigger>
         {isAdmin ? <TabsTrigger className="hover:bg-background/70 dark:hover:bg-input/30 transition-colors" value="admin" onClick={()=> handleNavigate("admin")}>Admin</TabsTrigger> : null}
       </TabsList>
     </Tabs>

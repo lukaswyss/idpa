@@ -36,6 +36,7 @@ async function createChallenge(formData: FormData): Promise<{ ok: boolean; id?: 
     description: formData.get("description") ?? undefined,
     startScore: formData.get("startScore"),
     config: formData.get("config") ?? undefined,
+    abEnabled: (formData.get("abEnabled") as string | null) ?? undefined,
   });
   if (!parsed.success) return { ok: false, error: "Ungültige Eingabe" };
 

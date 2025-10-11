@@ -1,6 +1,7 @@
 export const animals = [
   "Fuchs","Panda","Falke","Otter","Luchs","Dachs","Eule","Wal","Delfin","Biber",
   "Marder","Wolf","Hirsch","Möwe","Rabe","Spatz","Iltis","Milan","Schwan",
+  "Zebra","Giraffe","Leopard","Nashorn","Flamingo","Krokodil","Kamel"
 ];
 
 export const animalGender: Record<string, "m" | "f" | "n"> = {
@@ -23,6 +24,13 @@ export const animalGender: Record<string, "m" | "f" | "n"> = {
   Iltis: "m",
   Milan: "m",
   Schwan: "m",
+  Zebra: "n",
+  Giraffe: "f",
+  Leopard: "m",
+  Nashorn: "n",
+  Flamingo: "m",
+  Krokodil: "n",
+  Kamel: "n",
 };
 
 

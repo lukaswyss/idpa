@@ -57,9 +57,32 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   // DayEntries sheet
   const wsEntries = wb.addWorksheet("DayEntries");
-  wsEntries.addRow(["entryId", "participantId", "date", "totalScore", "note"]);
+  wsEntries.addRow([
+    "entryId",
+    "participantId",
+    "date",
+    "totalScore",
+    "note",
+    "firstAnswerAt",
+    "lastAnswerAt",
+    "submittedAt",
+    "durationMs",
+  ]);
   for (const e of entries as any[]) {
-    wsEntries.addRow([e.id, e.participantId, format(new Date(e.date), "yyyy-MM-dd"), e.totalScore, e.note ?? ""]);
+    const firstAt = e.firstAnswerAt ? format(new Date(e.firstAnswerAt), "yyyy-MM-dd HH:mm:ss") : "";
+    const lastAt = e.lastAnswerAt ? format(new Date(e.lastAnswerAt), "yyyy-MM-dd HH:mm:ss") : "";
+    const subAt = e.submittedAt ? format(new Date(e.submittedAt), "yyyy-MM-dd HH:mm:ss") : "";
+    wsEntries.addRow([
+      e.id,
+      e.participantId,
+      format(new Date(e.date), "yyyy-MM-dd"),
+      e.totalScore,
+      e.note ?? "",
+      firstAt,
+      lastAt,
+      subAt,
+      typeof e.durationMs === "number" ? e.durationMs : "",
+    ]);
   }
 
   // EntryActions sheet

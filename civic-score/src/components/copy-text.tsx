@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { CopyIcon } from "lucide-react";
+import { CopyCheck, CopyIcon } from "lucide-react";
 
 export function CopyText({ value, label }: { value: string; label?: string }) {
   const [copied, setCopied] = React.useState(false);
@@ -13,7 +13,7 @@ export function CopyText({ value, label }: { value: string; label?: string }) {
       setCopied(true);
       const t = setTimeout(() => setCopied(false), 1500);
       return () => clearTimeout(t);
-    } catch {}
+    } catch { }
   };
 
   return (
@@ -22,8 +22,19 @@ export function CopyText({ value, label }: { value: string; label?: string }) {
       <code className="px-2 py-1 rounded border bg-accent/40 text-sm font-mono select-all">
         {value}
       </code>
-      <Button type="button" size="sm" variant="outline" onClick={handleCopy} aria-label="Copy to clipboard">
-      <CopyIcon />
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={handleCopy}
+        aria-label="Copy to clipboard"
+        className={`transition-all duration-300 ${
+          copied
+            ? "scale-105"
+            : ""
+        }`}
+      >
+        {copied ? <CopyCheck /> : <CopyIcon />}
         {copied ? "Kopiert" : "Kopieren"}
       </Button>
     </div>

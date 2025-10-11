@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,12 +33,31 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
   }, {});
   const form = useForm<FormData>({ resolver: zodResolver(Schema), defaultValues: { selected: initialSelected ?? [], note: initialNote ?? "", answers: initialAnswers ?? {} }});
   const [pending, start] = useTransition();
+  const firstRef = useRef<Date | null>(null);
+  const lastRef = useRef<Date | null>(null);
+
+  function markActivity() {
+    const now = new Date();
+    if (!firstRef.current) firstRef.current = now;
+    lastRef.current = now;
+  }
 
   async function submit(data: FormData) {
+    const submittedAt = new Date();
+    const first = firstRef.current ?? null;
+    const last = lastRef.current ?? null;
+    const durationMs = first && last ? Math.max(0, last.getTime() - first.getTime()) : undefined;
     const res = await fetch("/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, challengeCode }),
+      body: JSON.stringify({
+        ...data,
+        challengeCode,
+        firstAnswerAt: first ? first.toISOString() : undefined,
+        lastAnswerAt: last ? last.toISOString() : undefined,
+        submittedAt: submittedAt.toISOString(),
+        durationMs,
+      }),
     });
     if (res.ok) toast.success("Gespeichert", { description: "Tages-Score aktualisiert." });
     else toast.error("Fehler", { description: "Konnte nicht speichern." });
@@ -59,6 +78,7 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
                 <Checkbox
                   checked={form.watch("selected").includes(a.id)}
                   onCheckedChange={(v)=> {
+                    markActivity();
                     const arr = new Set(form.getValues("selected"));
                     if (v === true) {
                       arr.add(a.id);
@@ -85,7 +105,7 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
           <div className="font-medium">Tagesbewertung</div>
           <Rating
             value={Number((form.watch("answers") as any)?.rating) || 0}
-            onValueChange={(v)=> form.setValue("answers", { ...(form.getValues("answers")||{}), rating: v })}
+            onValueChange={(v)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), rating: v }); }}
           >
             {Array.from({ length: 5 }).map((_, index) => (
               <RatingButton key={index} />
@@ -102,21 +122,21 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
               <div key={q.id} className="space-y-1">
                 <div className="text-sm">{q.label}</div>
                 {q.type === "text" && (
-                  <input className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value })} />
+                  <input className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value }); }} />
                 )}
                 {q.type === "number" && (
-                  <input type="number" className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value ? Number(e.target.value) : undefined })} />
+                  <input type="number" className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value ? Number(e.target.value) : undefined }); }} />
                 )}
                 {q.type === "boolean" && (
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={Boolean(form.watch("answers")?.[q.id])} onChange={(e)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.checked })} />
+                    <input type="checkbox" checked={Boolean(form.watch("answers")?.[q.id])} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.checked }); }} />
                     <span className="text-sm">Ja</span>
                   </label>
                 )}
                 {q.type === "select" && Array.isArray((q as any).items) && (
                   <Select
                     value={String((form.watch("answers")?.[q.id] as any) ?? "")}
-                    onValueChange={(v)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v })}
+                    onValueChange={(v)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v }); }}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Auswählen..." />
@@ -132,7 +152,7 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
                   <div className="py-1">
                     <Rating
                       value={Number((form.watch("answers") as any)?.[q.id]) || 0}
-                      onValueChange={(v)=> form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v })}
+                      onValueChange={(v)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v }); }}
                     >
                       {Array.from({ length: typeof (q as any).stars === "number" ? (q as any).stars : 5 }).map((_, index) => (
                         <RatingButton key={index} />
@@ -148,7 +168,7 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
 
       <div className="space-y-2">
         <div className="text-sm font-medium">Notiz (optional)</div>
-        <Textarea {...form.register("note")} placeholder="Kontext, falls nötig…" />
+        <Textarea {...form.register("note", { onChange: ()=> markActivity() })} placeholder="Kontext, falls nötig…" />
       </div>
 
       <Button type="submit" disabled={pending}>Speichern</Button>

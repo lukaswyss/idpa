@@ -11,11 +11,12 @@ import { Prisma } from "@prisma/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { isLastDay, isDefinedDay as isDefinedDayHelper, hasWeeklyConfig, isWeeklyDue, getSelectedChallengeCode } from "@/lib/challenge";
 import { SwordsIcon } from "lucide-react";
+import LoginSuccessToast from "@/app/today/login-success.client";
 
 export default async function TodayPage() {
   const session = await getSessionUser();
   if (!session) {
-    return <LoginRequired message="Bitte anmelden, um deinen heutigen Score zu erfassen." />;
+    return <LoginRequired message="Bitte anmelden, um deine Fragen zu beantworten." />;
   }
   const actions = await prisma.action.findMany({ orderBy: [{ category: "asc" }, { label: "asc" }] });
   const today = new Date();
@@ -195,6 +196,7 @@ export default async function TodayPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-6">
+      <LoginSuccessToast />
       <h1 className="text-2xl font-semibold">Civic Score – Heute ({format(today, "dd.MM.yyyy")})</h1>
 
       {challenge && (
