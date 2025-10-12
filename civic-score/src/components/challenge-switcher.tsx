@@ -15,9 +15,9 @@ type Item = {
 };
 
 export function ChallengeSwitcher({ items }: { items: Item[] }) {
-  const [curr, setCurr] = useState<string | null>(() => items.find(i => i.selected)?.code ?? null);
+  const [curr, setCurr] = useState<string | null>(() => items.find(i => i.selected)?.code ?? (items[0]?.code ?? null));
   useEffect(() => {
-    setCurr(items.find(i => i.selected)?.code ?? null);
+    setCurr(items.find(i => i.selected)?.code ?? (items[0]?.code ?? null));
   }, [items.map(i => `${i.code}:${i.selected}`).join("|")]);
 
   const selected = useMemo(() => items.find(i => i.code === curr) ?? items[0], [curr, items]);
@@ -26,7 +26,22 @@ export function ChallengeSwitcher({ items }: { items: Item[] }) {
     setCurr(code);
     try {
       await fetch("/api/challenge/select", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
-      // Optimistic: location may stay; pages will read cookie on next load
+      // Optimistic refresh: request server data refresh to reflect selection immediately
+      if (typeof window !== "undefined") {
+        try {
+          // Use Next.js soft navigation to refresh data without a full page reload
+          // @ts-ignore - available in app router via global router
+          if (window?.next?.router?.refresh) {
+            // Some setups expose router globally
+            window.next.router.refresh();
+          } else {
+            // Fallback: soft reload
+            window.location.reload();
+          }
+        } catch {
+          window.location.reload();
+        }
+      }
     } catch {}
   }
 

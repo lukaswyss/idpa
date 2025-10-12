@@ -3,6 +3,7 @@ import { getOrCreateParticipant } from "@/lib/participant";
 import { getSessionUser } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { format } from "date-fns";
 import LoginRequired from "@/components/login-required";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,11 @@ async function joinChallenge(formData: FormData): Promise<void> {
       await (prisma as any).challengeMembership.create({
         data: { participantId: participant.id, challengeId: challenge.id, abGroup },
       });
+      // Set selected challenge cookie to the newly joined challenge for immediate context
+      try {
+        const jar: any = await cookies();
+        jar.set("selected_challenge", String((challenge as any).code), { httpOnly: false, sameSite: "lax", path: "/" });
+      } catch {}
       // Falls Startscore > 0: Basis-Eintrag am Challenge-Starttag anlegen
       if (challenge.startDate && (challenge as any).startScore && (challenge as any).startScore > 0) {
         const start = new Date(challenge.startDate);

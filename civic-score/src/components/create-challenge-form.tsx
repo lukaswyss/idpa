@@ -14,6 +14,7 @@ import { DateInput } from "@/components/date-input";
 import { getDefaultChallengeConfig } from "@/lib/challenge-templates";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
+import { Spinner } from "@/components/spinner";
 
 const CreateChallengeSchema = z.object({
   title: z.string().min(3, "Mindestens 3 Zeichen"),
@@ -204,7 +205,10 @@ export function CreateChallengeForm({ action, onSuccess }: { action: (formData: 
           )}
         />
 
-        <Button className="w-fit" type="submit">Erstellen</Button>
+        <Button className="w-fit" type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? <Spinner className="mr-2" /> : null}
+          Erstellen
+        </Button>
       </form>
     </Form>
   );

@@ -20,7 +20,7 @@ export default function LoginForm({ action }: { action: Action }) {
     <form action={formAction} className="space-y-2">
       <Input name="username" placeholder="Username" />
       <Input name="password" type="password" placeholder="Passwort" />
-      <Button type="submit">Login</Button>
+      <Button className="w-full " type="submit">Login</Button>
     </form>
   );
 }

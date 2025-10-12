@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,6 +36,7 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
   const [pending, start] = useTransition();
   const firstRef = useRef<Date | null>(null);
   const lastRef = useRef<Date | null>(null);
+  const router = useRouter();
 
   function markActivity() {
     const now = new Date();
@@ -59,7 +61,11 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
         durationMs,
       }),
     });
-    if (res.ok) toast.success("Gespeichert", { description: "Tages-Score aktualisiert." });
+    if (res.ok) {
+      toast.success("Gespeichert", { description: "Tages-Score aktualisiert." });
+      // Refresh server data so pre-quiz gating/daily questions update immediately
+      router.refresh();
+    }
     else toast.error("Fehler", { description: "Konnte nicht speichern." });
   }
 
@@ -99,20 +105,6 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
           </CardContent>
         </Card>
       ))}
-
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="font-medium">Tagesbewertung</div>
-          <Rating
-            value={Number((form.watch("answers") as any)?.rating) || 0}
-            onValueChange={(v)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), rating: v }); }}
-          >
-            {Array.from({ length: 5 }).map((_, index) => (
-              <RatingButton key={index} />
-            ))}
-          </Rating>
-        </CardContent>
-      </Card>
 
       {questions && questions.length > 0 && (
         <Card>

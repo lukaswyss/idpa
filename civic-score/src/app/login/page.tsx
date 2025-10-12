@@ -36,7 +36,7 @@ export default async function LoginPage() {
       <section className="space-y-3">
         <h1 className="text-2xl font-semibold">Anmelden</h1>
         <LoginForm action={doLogin} />
-        <div className="text-sm flex items-center justify-between">
+        <div className="text-sm flex items-center flex-col md:flex-row md:justify-between md:pt-0 pt-6 gap-2">
           <span>Noch kein Account? <Link className="underline" href="/register">Registrieren</Link></span>
           <Link className="underline" href="/reset">Passwort vergessen?</Link>
         </div>

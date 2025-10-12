@@ -8,8 +8,6 @@ export default function InfoPage() {
           Während unserer Interdisziplinäre Projektarbeit (IDPA) haben wir uns für das Projekt "Civic Score" entschieden.
           Civic Score ist ein Projekt, das daurauf ausgerichtet ist unsere alltäglichen aktionen festzuhalten und auszuwerten.
           Dabei gibt es die Sogenannte Challange, der die verschienen Probanden beitreten können.
-          Diese Challange kann mit einem Code beitreten werden, welcher im Rahmen der Projektarbeit
-          ausgeteilt wird. 
           <br />
           <br />
           <strong>Unsere höchste Priorität ist es, die Software 100% anonymisiert und sicher zu halten.</strong> Dafür wird den Probanden ein anonymer benutzer erstellt, welchen sie slebst zusammen mit dem Passwort abspeichern müssen.

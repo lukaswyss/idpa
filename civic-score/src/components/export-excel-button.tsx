@@ -9,6 +9,7 @@ export function ExportExcelButton({ challengeId, challengeCode }: { challengeId:
   const [loading, setLoading] = useState(false);
   return (
     <Button
+    className="w-full md:w-auto"
       variant="outline"
       onClick={async () => {
         try {

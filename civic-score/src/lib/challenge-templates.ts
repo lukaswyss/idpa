@@ -28,9 +28,9 @@ export const DEFAULT_CHALLENGE_CONFIG: any = {
     postId: "post-001",
     post: {
       questions: [
-        { id: "post_knowledge", label: "Hast du dein Wissen verbessert?", type: "stars" , stars: 5 },
-        { id: "post_feedback", label: "Wie stark hatt die Challenge deine alltäglichen Aktionen beeinflusst?", type: "stars" , stars: 5 },
-        { id: "post_feedback", label: "Kurzes Feedback zur Challenge (anonym)", type: "text" },
+		{ id: "post_knowledge", label: "Hast du dein Wissen verbessert?", type: "stars" , stars: 5 },
+		{ id: "post_influence", label: "Wie stark hatt die Challenge deine alltäglichen Aktionen beeinflusst?", type: "stars" , stars: 5 },
+		{ id: "post_feedback", label: "Kurzes Feedback zur Challenge (anonym)", type: "text" },
       ],
     },
   },
@@ -40,10 +40,10 @@ export const DEFAULT_CHALLENGE_CONFIG: any = {
       { id: "d_donate", label: "Spende für Wohltätigkeit", type: "boolean",weight: 5},
       { id: "d_report_danger", label: "Öffentliche Gefahren gemeldet (z. B. offenes Feuer, Unfall)", type: "boolean",weight: 3},
       { id: "d_award", label: "Öffentliche auszeichnung erhalten", type: "boolean",weight: 3},
-      { id: "d_volunteer", label: "Teilnahme an freiwilliger Gemeindearbeit", type: "boolean",weight: 4},
+		{ id: "d_volunteer", label: "Teilnahme an freiwilliger Gemeindearbeit", type: "boolean",weight: 4},
       { id: "d_public_transport", label: "Öffentliche Verkehrsmittel statt Auto genutzt", type: "boolean",weight: 2},
       { id: "d_energy_saving", label: "Strom- oder Wasserverbrauch reduziert", type: "boolean",weight: 1},
-      { id: "d_volunteer", label: "Ehrenamtliche Tätigkeit im Verein", type: "boolean",weight: 3},
+		{ id: "d_volunteer_club", label: "Ehrenamtliche Tätigkeit im Verein", type: "boolean",weight: 3},
       { id: "d_bike", label: "Velo statt Auto genutzt", type: "boolean",weight: 2},
       { id: "d_recycling", label: "Müll korrekt entsorgt / Recycling betrieben", type: "boolean",weight: 1},
       { id: "d_lost_wallet", label: "Fundsache abgegeben (z. B. verlorenes Portemonnaie)", type: "boolean",weight: 3},
@@ -51,8 +51,7 @@ export const DEFAULT_CHALLENGE_CONFIG: any = {
       // Work
       { id: "d_work_promo", label: "Auszeichnung oder Beförderung am Arbeitsplatz", type: "boolean",weight: 4},
       { id: "d_work_suggestion", label: "Vorschläge zur Prozessverbesserung eingebracht", type: "boolean",weight: 2},
-      { id: "d_work_overtime", label: "Überstunden geleistet", type: "boolean",weight: 2},
-      { id: "d_work_overtime", label: "Überstunden geleistet", type: "boolean",weight: 2},
+		{ id: "d_work_overtime", label: "Überstunden geleistet", type: "boolean",weight: 2},
       { id: "d_work_event", label: "An Team-Events oder Firmenveranstaltungen teilgenommen", type: "boolean",weight: 1},
       { id: "d_work_training", label: "Weiterbildung abgeschlossen (z.B Kurs, Zertifizierung)", type: "boolean",weight: 3},
       { id: "d_work_project", label: "Erfolgreich ein Projekt abgeschlossen", type: "boolean",weight: 3},
@@ -60,13 +59,12 @@ export const DEFAULT_CHALLENGE_CONFIG: any = {
       // Private
       { id: "d_private_appt_kept", label: "Termin eingehalten", type: "boolean",weight: 2},
       { id: "d_private_help", label: "Nachbarschaftshilfe geleistet (z.B Einkäufe für ältere Personen)", type: "boolean",weight: 2},
-      { id: "d_private_energy", label: "Energiesparmassnahmen im Haushalt umgesetzt", type: "boolean",weight: 1},
-      { id: "d_private_energy", label: "Energiesparmassnahmen im Haushalt umgesetzt", type: "boolean",weight: 1},
+		{ id: "d_private_energy", label: "Energiesparmassnahmen im Haushalt umgesetzt", type: "boolean",weight: 1},
       { id: "d_private_pet", label: "Haustier artgerecht gepflegt", type: "boolean",weight: 1},
       { id: "d_private_bill", label: "Rechnung pünktlich bezahlt", type: "boolean",weight: 2},
       { id: "d_private_blood", label: "Blutspenden / Organspendeausweis registriert", type: "boolean",weight: 3},
       // Digital
-      { id: "d_digital_share", label: "Sich Online freundlich/konstruktiv äussern", type: "boolean",weight: 1},
+		{ id: "d_digital_kind", label: "Sich Online freundlich/konstruktiv äussern", type: "boolean",weight: 1},
       { id: "d_digital_report", label: "Fake-News gemeldet", type: "boolean",weight: 2},
       { id: "d_digital_discussion", label: "Konstruktive Diskussion online geführt (z.B Forum)", type: "boolean",weight: 1},
       { id: "d_digital_security", label: "Eigene Daten sicher verwalten (z.B anhand von 2FA)", type: "boolean",weight: 2},
@@ -98,9 +96,9 @@ export const DEFAULT_CHALLENGE_CONFIG: any = {
       { id: "d_negative_private_billlate", label: "Rechnung nicht pünktlich bezahlen", type: "boolean",weight: -2},
       { id: "d_negative_private_energy", label: "Übermässiger Energieverbrauch (z.B Dauerlicht, Wasserverschwendung)", type: "boolean",weight: -2},
       { id: "d_negative_private_food", label: "Essensverschwendung (Lebensmittel wegwerfen)", type: "boolean",weight: -2},
-      { id: "d_negative_private_noise", label: "Ruhestörung durch laute Musik oder feiern", type: "boolean",weight: -3},
+		{ id: "d_negative_private_noise", label: "Ruhestörung durch laute Musik oder feiern", type: "boolean",weight: -3},
       { id: "d_negative_private_dunning", label: "Eine Mahnung bekommen", type: "boolean",weight: -3},
-      { id: "d_negative_private_noise", label: "Nachbarschaftsbeschwerde (z. B. Lärm)", type: "boolean",weight: -2},
+		{ id: "d_negative_private_complaint", label: "Nachbarschaftsbeschwerde (z. B. Lärm)", type: "boolean",weight: -2},
 
       // Digital
       { id: "d_negative_digital_rude", label: "Sich Online unfreundlich geäussert", type: "boolean",weight: -2},

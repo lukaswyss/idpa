@@ -12,6 +12,8 @@ import { getSessionUser } from "@/lib/auth";
 import LoginRequired from "@/components/login-required";
 import { ArrowLeftIcon } from "lucide-react";
 import { ExportExcelButton } from "@/components/export-excel-button";
+import { AbGroupSelect } from "@/components/ab-group-select";
+import { MembershipAbGroupEditor } from "@/components/membership-ab-group-editor";
 
 async function addQuestionDate(formData: FormData): Promise<void> {
   "use server";
@@ -171,11 +173,15 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
       </div>
 
 
-
+      <div className="md:hidden" >
+            <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
+          </div>
       <section className="space-y-1">
         <div className="flex items-center justify-between w-full">
           <CopyText value={challenge.code} label="Zugangscode" />
-          <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
+            <div className="hidden md:block" >
+              <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
+            </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm opacity-70">Zeitraum</span>
@@ -213,22 +219,9 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
               <span>{m.participant.id}</span>
               <span className="opacity-70">{m.abGroup ? `(Gruppe ${m.abGroup})` : ""}</span>
               {(challenge as any).abEnabled && (
-                <form action={async (formData: FormData) => {
-                  "use server";
-                  const id = String(formData.get("id"));
-                  const group = String(formData.get("group")) as "A" | "B" | "";
-                  if (!id) return;
-                  await (prisma as any).challengeMembership.update({ where: { id }, data: { abGroup: group === "A" ? "A" : group === "B" ? "B" : null } });
-                  revalidatePath(`/admin/${challenge.id}`);
-                }} className="inline-flex items-center gap-1">
-                  <input type="hidden" name="id" value={m.id} />
-                  <select name="group" defaultValue={m.abGroup ?? ""} className="border rounded px-1 py-0.5 text-xs">
-                    <option value="">–</option>
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                  </select>
-                  <button className="underline text-xs" type="submit">Speichern</button>
-                </form>
+                <div className="inline-flex items-center gap-1">
+                  <MembershipAbGroupEditor membershipId={m.id} defaultValue={(m.abGroup ?? "A") as "A" | "B"} />
+                </div>
               )}
             </li>
           ))}

@@ -290,7 +290,7 @@ export default async function AdminPage() {
               {challenges.map((c: any) => (
                 <li key={c.id} className="text-sm flex items-center justify-between gap-4">
                   <span>
-                    <Link className="underline" href={`/admin/${c.id}`}>{c.title}</Link> ({c.code}) – {format(c.startDate, "dd.MM.yyyy")}–{format(c.endDate, "dd.MM.yyyy")}
+                    <Link className="underline" href={`/admin/${c.id}`}>{c.title}</Link> <span className="hidden md:inline">({c.code})</span> – {format(c.startDate, "dd.MM.yyyy")}–{format(c.endDate, "dd.MM.yyyy")}
                   </span>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
