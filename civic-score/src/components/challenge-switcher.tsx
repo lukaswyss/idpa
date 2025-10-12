@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ type Item = {
 };
 
 export function ChallengeSwitcher({ items }: { items: Item[] }) {
+  const router = useRouter();
   const [curr, setCurr] = useState<string | null>(() => items.find(i => i.selected)?.code ?? (items[0]?.code ?? null));
   useEffect(() => {
     setCurr(items.find(i => i.selected)?.code ?? (items[0]?.code ?? null));
@@ -27,20 +29,10 @@ export function ChallengeSwitcher({ items }: { items: Item[] }) {
     try {
       await fetch("/api/challenge/select", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
       // Optimistic refresh: request server data refresh to reflect selection immediately
-      if (typeof window !== "undefined") {
-        try {
-          // Use Next.js soft navigation to refresh data without a full page reload
-          // @ts-ignore - available in app router via global router
-          if (window?.next?.router?.refresh) {
-            // Some setups expose router globally
-            window.next.router.refresh();
-          } else {
-            // Fallback: soft reload
-            window.location.reload();
-          }
-        } catch {
-          window.location.reload();
-        }
+      try {
+        router.refresh();
+      } catch {
+        if (typeof window !== "undefined") window.location.reload();
       }
     } catch {}
   }
