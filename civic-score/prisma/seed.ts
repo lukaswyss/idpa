@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeonHTTP } from "@prisma/adapter-neon";
 
-const isDev = process.env.NODE_ENV === "development";
+ const isDev = process.env.NODE_ENV === "development";
 const databaseUrl = isDev ? (process.env.DEV_DATABASE_URL || process.env.DATABASE_URL) : process.env.DATABASE_URL;
 if (!databaseUrl) {
   throw new Error(isDev ? "DEV_DATABASE_URL or DATABASE_URL is not set" : "DATABASE_URL is not set");
