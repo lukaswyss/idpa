@@ -2,10 +2,18 @@
 
 import Avatar from "boring-avatars";
 
-export function AvatarCircle({ name, size = 28 }: { name: string; size?: number }) {
+export function AvatarCircle({ name, size = 28 }: { name: string; size?: number}) {
+  const colors = [   
+    "#df7777",
+    "#ff7d10",
+    "#905182",
+    "#315e96",
+    "#a4ccea"
+  ] ;
+
   return (
-    <div style={{ width: size, height: size }} className="rounded-full overflow-hidden inline-block align-middle">
-      <Avatar size={size} name={name} variant="beam" colors={["#0ea5e9","#22c55e","#f59e0b","#8b5cf6","#ef4444"]} />
+    <div style={{ width: size, height: size }} className={` overflow-hidden inline-block align-middle rounded-sm`}>
+      <Avatar size={size} name={name} square={true} variant="marble" colors={colors} />
     </div>
   );
 }

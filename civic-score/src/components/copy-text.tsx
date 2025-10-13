@@ -4,7 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { CopyCheck, CopyIcon } from "lucide-react";
 
-export function CopyText({ value, label }: { value: string; label?: string }) {
+export function CopyText({ value, label, variant = "1" }: { value: string; label?: string, variant?: string }) {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = async () => {
@@ -16,29 +16,50 @@ export function CopyText({ value, label }: { value: string; label?: string }) {
     } catch { }
   };
 
-  return (
-    <div className="flex items-center gap-2">
-      {label ? <span className="text-sm opacity-70">{label}</span> : null}
-      <code className="px-2 py-1 rounded border bg-accent/40 text-sm font-mono select-all">
-        {value}
-      </code>
+  if (variant === "2") {
+    return (
       <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={handleCopy}
-        aria-label="Copy to clipboard"
-        className={`transition-all duration-300 ${
-          copied
-            ? "scale-105"
-            : ""
-        }`}
-      >
-        {copied ? <CopyCheck /> : <CopyIcon />}
-        {copied ? "Kopiert" : "Kopieren"}
-      </Button>
-    </div>
-  );
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleCopy}
+          aria-label="Copy to clipboard"
+          className={`transition-all duration-300 ${copied
+              ? "scale-105"
+              : ""
+            }`}
+        >
+          {copied ? <CopyCheck /> : <CopyIcon />}
+          {copied ? "Kopiert" : "Kopieren"}
+        </Button>
+    );
+  }
+  else {  
+
+    return (
+
+      <div className="flex items-center gap-2">
+        {label ? <span className="text-sm opacity-70">{label}</span> : null}
+        <code className="px-2 py-1 rounded border bg-accent/40 text-sm font-mono select-all">
+          {value}
+        </code>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleCopy}
+          aria-label="Copy to clipboard"
+          className={`transition-all duration-300 ${copied
+              ? "scale-105"
+              : ""
+            }`}
+        >
+          {copied ? <CopyCheck /> : <CopyIcon />}
+          {copied ? "Kopiert" : "Kopieren"}
+        </Button>
+      </div>
+    );
+  }
 }
 
 

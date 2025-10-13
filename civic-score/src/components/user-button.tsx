@@ -12,8 +12,8 @@ export default async function UserButton() {
   }
   const label = sessionUser.username ?? "User";
   return (
-    <Link href="/profile" className="inline-flex items-center gap-2">
-      <AvatarCircle name={label} />
+    <Link href="/profile" className="inline-flex items-center gap-2 ">
+      <AvatarCircle name={label}   />
     </Link>
   );
 }

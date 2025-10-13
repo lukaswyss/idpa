@@ -397,9 +397,9 @@ export default async function TodayPage() {
         </div>
       ) : (
         <section className="space-y-2">
-          <div className="text-sm">Du bist aktuell keiner Challenge beigetreten.</div>
+          <div className="text-sm text-center">Du bist aktuell keiner Challenge beigetreten.</div>
           {session ? (
-            <Link href="/join"><Button variant="outline"><SwordsIcon />Jetzt Challenge beitreten</Button></Link>
+            <Link href="/join"><Button variant="outline" className="w-full"><SwordsIcon />Jetzt Challenge beitreten</Button></Link>
           ) : (
             <Link href="/login" className="underline text-blue-600"><Button>Zum Beitreten anmelden</Button></Link>
           )}

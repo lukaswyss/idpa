@@ -6,18 +6,17 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { format } from "date-fns";
 import LoginRequired from "@/components/login-required";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import JoinForm from "./join-form.client";
 
-async function joinChallenge(formData: FormData): Promise<void> {
+async function joinChallenge(_: any, formData: FormData): Promise<any> {
   "use server";
   const Schema = z.object({ code: z.string().min(3) });
   const parsed = Schema.safeParse({ code: formData.get("code") });
-  if (!parsed.success) return;
+  if (!parsed.success) return { error: "validation", message: "Bitte Code eingeben." };
 
   const participant = await getOrCreateParticipant();
   const challenge = await (prisma as any).challenge.findUnique({ where: { code: parsed.data.code.trim() } });
-  if (!challenge) return;
+  if (!challenge) return { error: "not_found", message: "Challenge-Code existiert nicht." };
 
   // Kein Upsert im HTTP-Modus: erst prüfen, dann erstellen
   const existing = await (prisma as any).challengeMembership.findUnique({
@@ -61,6 +60,7 @@ async function joinChallenge(formData: FormData): Promise<void> {
     }
   }
   revalidatePath("/today");
+  return { ok: true, message: "Challenge beigetreten." };
 }
 
 export default async function JoinPage() {
@@ -78,10 +78,7 @@ export default async function JoinPage() {
     <main className="mx-auto max-w-3xl p-6 space-y-6">
       <section className="max-w-md space-y-3">
         <h1 className="text-2xl font-semibold">Challenge beitreten</h1>
-        <form action={joinChallenge} className="space-y-3">
-          <Input name="code" placeholder="Code eingeben" />
-          <Button type="submit">Beitreten</Button>
-        </form>
+        <JoinForm action={joinChallenge} />
       </section>
 
       <section className="space-y-2">
