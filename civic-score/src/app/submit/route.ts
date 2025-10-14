@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { getOrCreateParticipant } from "@/lib/participant";
+import { getSessionUser } from "@/lib/auth";
 import { z } from "zod";
 
 const BodySchema = z.object({
@@ -24,7 +24,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Invalid request body" }, { status: 400 });
     }
 
-    const participant = await getOrCreateParticipant();
+    const session = await getSessionUser();
+    if (!session) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
 
     // Heute (nur Datumsteil)
     const now = new Date();
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Unbekannte Challenge" }, { status: 400 });
     }
     const membership = await (prisma as any).challengeMembership.findUnique({
-      where: { participantId_challengeId: { participantId: participant.id, challengeId: challenge.id } },
+      where: { userId_challengeId: { userId: session.id, challengeId: challenge.id } },
     });
     if (!membership) {
       return NextResponse.json({ ok: false, error: "Nicht Mitglied der Challenge" }, { status: 403 });
@@ -89,7 +92,7 @@ export async function POST(req: NextRequest) {
     // Upsert Tages-Eintrag
     // Kein Upsert im HTTP-Modus: erst suchen, dann update/create
     let entry = await (prisma as any).dayEntry.findUnique({
-      where: { participantId_date_challengeId: { participantId: participant.id, date: day, challengeId } },
+      where: { userId_date_challengeId: { userId: session.id, date: day, challengeId } },
     });
     if (entry) {
       entry = await (prisma as any).dayEntry.update({
@@ -98,7 +101,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       entry = await (prisma as any).dayEntry.create({
-        data: { participantId: participant.id, date: day, note: parsed.data.note, totalScore: total, challengeId },
+        data: { userId: session.id, date: day, note: parsed.data.note, totalScore: total, challengeId },
       });
     }
 

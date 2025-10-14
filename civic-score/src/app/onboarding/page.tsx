@@ -1,14 +1,12 @@
 import { getSessionUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getOrCreateParticipant } from "@/lib/participant";
 import Link from "next/link";
 import { getOnboardingTasks, type ChecklistItem } from "@/lib/onboarding-tasks";
 
 export default async function OnboardingPage() {
   const session = await getSessionUser();
   if (!session) redirect("/login");
-  const participant = await getOrCreateParticipant();
-  const items: ChecklistItem[] = await getOnboardingTasks(participant.id, !!session);
+  const items: ChecklistItem[] = await getOnboardingTasks(session.id, !!session);
 
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-6">

@@ -27,7 +27,9 @@ const Schema = z.object({
 });
 type FormData = z.infer<typeof Schema>;
 
-export function DailyForm({ actions, challengeCode, initialSelected, initialNote, questions, initialAnswers, abMode, abGroup }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string; questions?: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B" }) {
+type Question = { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number };
+
+export function DailyForm({ actions, challengeCode, initialSelected, initialNote, questions, definedQuestions, dailyQuestions, initialAnswers, abMode, abGroup }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string; questions?: Question[]; definedQuestions?: Question[]; dailyQuestions?: Question[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B" }) {
   const groups = actions.reduce<Record<string, Action[]>>((acc, a) => {
     (acc[a.category] ||= []).push(a);
     return acc;
@@ -70,6 +72,60 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
   }
 
   const hideWeights = Boolean(abMode && abGroup === "B");
+  function renderQuestions(title: string, list?: Question[]) {
+    if (!list || list.length === 0) return null;
+    return (
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="font-medium">{title}</div>
+          {list.map((q) => (
+            <div key={q.id} className="space-y-1">
+              <div className="text-sm">{q.label}</div>
+              {q.type === "text" && (
+                <input className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value }); }} />
+              )}
+              {q.type === "number" && (
+                <input type="number" className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value ? Number(e.target.value) : undefined }); }} />
+              )}
+              {q.type === "boolean" && (
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={Boolean(form.watch("answers")?.[q.id])} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.checked }); }} />
+                  <span className="text-sm">Ja</span>
+                </label>
+              )}
+              {q.type === "select" && Array.isArray((q as any).items) && (
+                <Select
+                  value={String((form.watch("answers")?.[q.id] as any) ?? "")}
+                  onValueChange={(v)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v }); }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Auswählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(q as any).items.map((opt: any) => (
+                      <SelectItem key={String(opt.id)} value={String(opt.id)}>{String(opt.label ?? opt.id)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {q.type === "stars" && (
+                <div className="py-1">
+                  <Rating
+                    value={Number((form.watch("answers") as any)?.[q.id]) || 0}
+                    onValueChange={(v)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v }); }}
+                  >
+                    {Array.from({ length: typeof (q as any).stars === "number" ? (q as any).stars : 5 }).map((_, index) => (
+                      <RatingButton key={index} />
+                    ))}
+                  </Rating>
+                </div>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <form
       onSubmit={form.handleSubmit((d)=> start(()=> submit(d)))}
@@ -106,57 +162,9 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
         </Card>
       ))}
 
-      {questions && questions.length > 0 && (
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="font-medium">Zusatzfragen</div>
-            {questions.map((q) => (
-              <div key={q.id} className="space-y-1">
-                <div className="text-sm">{q.label}</div>
-                {q.type === "text" && (
-                  <input className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value }); }} />
-                )}
-                {q.type === "number" && (
-                  <input type="number" className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value ? Number(e.target.value) : undefined }); }} />
-                )}
-                {q.type === "boolean" && (
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={Boolean(form.watch("answers")?.[q.id])} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.checked }); }} />
-                    <span className="text-sm">Ja</span>
-                  </label>
-                )}
-                {q.type === "select" && Array.isArray((q as any).items) && (
-                  <Select
-                    value={String((form.watch("answers")?.[q.id] as any) ?? "")}
-                    onValueChange={(v)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v }); }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Auswählen..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(q as any).items.map((opt: any) => (
-                        <SelectItem key={String(opt.id)} value={String(opt.id)}>{String(opt.label ?? opt.id)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {q.type === "stars" && (
-                  <div className="py-1">
-                    <Rating
-                      value={Number((form.watch("answers") as any)?.[q.id]) || 0}
-                      onValueChange={(v)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: v }); }}
-                    >
-                      {Array.from({ length: typeof (q as any).stars === "number" ? (q as any).stars : 5 }).map((_, index) => (
-                        <RatingButton key={index} />
-                      ))}
-                    </Rating>
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      {definedQuestions && definedQuestions.length > 0 && renderQuestions("Sonderfragen", definedQuestions)}
+      {dailyQuestions && dailyQuestions.length > 0 && renderQuestions("Tagesfragen", dailyQuestions)}
+      {!definedQuestions && !dailyQuestions && questions && questions.length > 0 && renderQuestions("Zusatzfragen", questions)}
 
       <div className="space-y-2">
         <div className="text-sm font-medium">Notiz (optional)</div>

@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db";
-import { getOrCreateParticipant } from "@/lib/participant";
 import { getSessionUser } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
@@ -14,13 +13,14 @@ async function joinChallenge(_: any, formData: FormData): Promise<any> {
   const parsed = Schema.safeParse({ code: formData.get("code") });
   if (!parsed.success) return { error: "validation", message: "Bitte Code eingeben." };
 
-  const participant = await getOrCreateParticipant();
+  const session = await getSessionUser();
+  if (!session) return { error: "auth", message: "Bitte anmelden." };
   const challenge = await (prisma as any).challenge.findUnique({ where: { code: parsed.data.code.trim() } });
   if (!challenge) return { error: "not_found", message: "Challenge-Code existiert nicht." };
 
   // Kein Upsert im HTTP-Modus: erst prüfen, dann erstellen
   const existing = await (prisma as any).challengeMembership.findUnique({
-    where: { participantId_challengeId: { participantId: participant.id, challengeId: challenge.id } },
+    where: { userId_challengeId: { userId: session.id, challengeId: challenge.id } },
   });
   if (!existing) {
     try {
@@ -28,7 +28,7 @@ async function joinChallenge(_: any, formData: FormData): Promise<any> {
       const abEnabled: boolean = Boolean((challenge as any).abEnabled);
       const abGroup: "A" | "B" | undefined = abEnabled ? (Math.random() < 0.5 ? "A" : "B") : undefined;
       await (prisma as any).challengeMembership.create({
-        data: { participantId: participant.id, challengeId: challenge.id, abGroup },
+        data: { userId: session.id, challengeId: challenge.id, abGroup },
       });
       // Set selected challenge cookie to the newly joined challenge for immediate context
       try {
@@ -41,12 +41,12 @@ async function joinChallenge(_: any, formData: FormData): Promise<any> {
         const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
         const next = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate() + 1);
         const existingStart = await (prisma as any).dayEntry.findFirst({
-          where: ({ participantId: participant.id, challengeId: challenge.id, date: { gte: startDay, lt: next } } as any),
+          where: ({ userId: session.id, challengeId: challenge.id, date: { gte: startDay, lt: next } } as any),
         });
         if (!existingStart) {
           await (prisma as any).dayEntry.create({
             data: {
-              participantId: participant.id,
+              userId: session.id,
               date: startDay,
               totalScore: (challenge as any).startScore,
               note: "Startscore",
@@ -68,9 +68,8 @@ export default async function JoinPage() {
   if (!session) {
     return <LoginRequired title="Challenge beitreten" message="Bitte anmelden, um beizutreten." />;
   }
-  const participant = await getOrCreateParticipant();
   const memberships = await (prisma as any).challengeMembership.findMany({
-    where: { participantId: participant.id },
+    where: { userId: session.id },
     include: { challenge: true },
     orderBy: { joinedAt: "desc" },
   });

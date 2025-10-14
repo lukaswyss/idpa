@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db";
-import { getOrCreateUser } from "@/lib/user";
 import { createSession, hashPassword } from "@/lib/auth";
 import { z } from "zod";
 import { generateUniqueUsername } from "@/lib/user";
@@ -12,10 +11,9 @@ import { House } from "lucide-react";
 
 async function doRegister(formData: FormData) {
   "use server";
-  const Schema = z.object({ password: z.string().min(3), chosen: z.string().optional() });
-  const parsed = Schema.safeParse({ password: formData.get("password"), chosen: formData.get("chosen") ?? undefined });
+  const Schema = z.object({ password: z.string().min(3), chosen: z.string().min(3) });
+  const parsed = Schema.safeParse({ password: formData.get("password"), chosen: formData.get("chosen") });
   if (!parsed.success) return;
-  const { user } = await getOrCreateUser();
   let username = parsed.data.chosen || (await generateUniqueUsername());
   // ensure uniqueness; rotate until available (max tries)
   let tries = 0;
@@ -26,13 +24,13 @@ async function doRegister(formData: FormData) {
     tries++;
   }
   const passwordHash = await hashPassword(parsed.data.password);
-  const updated = await prisma.user.update({ where: { id: user.id }, data: { username, passwordHash } });
+  const created = await prisma.user.create({ data: { username, passwordHash } });
   // First registered user becomes admin automatically
   const anyAdmin = await prisma.adminRole.findFirst();
   if (!anyAdmin) {
-    try { await prisma.adminRole.create({ data: { userId: updated.id } }); } catch {}
+    try { await prisma.adminRole.create({ data: { userId: created.id } }); } catch {}
   }
-  await createSession(updated.id);
+  await createSession(created.id);
   redirect("/profile");
 }
 

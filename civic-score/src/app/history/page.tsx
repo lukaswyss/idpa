@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db";
-import { getOrCreateParticipant } from "@/lib/participant";
 import { getSessionUser } from "@/lib/auth";
 import LoginRequired from "@/components/login-required";
 import { format } from "date-fns";
@@ -11,16 +10,15 @@ export default async function HistoryPage() {
   if (!session) {
     return <LoginRequired title="Kein Zugriff" message="Bitte anmelden, um die Historie zu sehen." />;
   }
-  const p = await getOrCreateParticipant();
   const selected = await getSelectedChallengeCode();
   // Build challenge switcher items for this page
-  const memberships = await (prisma as any).challengeMembership.findMany({ where: { participantId: p.id }, include: { challenge: true } });
+  const memberships = await (prisma as any).challengeMembership.findMany({ where: { userId: session.id }, include: { challenge: true } });
   const items = (memberships as any[]).map((m) => {
     const ch = (m as any).challenge as any;
     return { id: ch.id as string, code: ch.code as string, title: ch.title as string, openToday: false, selected: ch.code === selected };
   });
   const entries = await prisma.dayEntry.findMany({
-    where: { participantId: p.id },
+    where: { userId: session.id },
     orderBy: { date: "desc" },
     select: {
       id: true,

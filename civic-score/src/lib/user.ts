@@ -1,17 +1,18 @@
 "use server";
 
 import { prisma } from "./db";
-import { getOrCreateParticipant } from "./participant";
 import { getSessionUser } from "./auth";
 import { generateAnonymousUsername } from "./username";
 
 export async function getOrCreateUser() {
-	const participant = await getOrCreateParticipant();
-	let user = await prisma.user.findFirst({ where: { participantId: participant.id } });
-	if (!user) {
-		user = await prisma.user.create({ data: { participantId: participant.id } });
+	const session = await getSessionUser();
+	if (session) {
+		const user = await prisma.user.findUnique({ where: { id: session.id } });
+		if (user) return { user } as const;
 	}
-	return { user, participant } as const;
+	// With mandatory registration, this path should not normally be used.
+	// Create a placeholder user requires username/password – caller should handle registration.
+	throw new Error("No active session; registration required before creating user");
 }
 
 export async function isCurrentUserAdmin(): Promise<boolean> {

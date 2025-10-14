@@ -8,7 +8,7 @@ export type ChecklistItem = {
   href?: string;
 };
 
-export async function getOnboardingTasks(participantId: string, hasSession?: boolean): Promise<ChecklistItem[]> {
+export async function getOnboardingTasks(userId: string, hasSession?: boolean): Promise<ChecklistItem[]> {
   // Determine session if not provided
   let hasAccount = typeof hasSession === "boolean" ? hasSession : false;
   if (typeof hasSession === "undefined") {
@@ -17,7 +17,7 @@ export async function getOnboardingTasks(participantId: string, hasSession?: boo
 
   // Identify latest joined challenge (if any)
   const membership = await (prisma as any).challengeMembership.findFirst({
-    where: { participantId },
+    where: { userId },
     orderBy: { joinedAt: "desc" },
     include: { challenge: true },
   });
@@ -27,7 +27,7 @@ export async function getOnboardingTasks(participantId: string, hasSession?: boo
   // Daily participation signal
   let hasAnyDaily = false;
   try {
-    const anyEntry = await (prisma as any).dayEntry.findFirst({ where: { participantId, challengeId: challenge?.id ?? undefined } });
+    const anyEntry = await (prisma as any).dayEntry.findFirst({ where: { userId, challengeId: challenge?.id ?? undefined } });
     hasAnyDaily = !!anyEntry;
   } catch {}
 

@@ -34,18 +34,6 @@ export async function createSession(userId: string, days = 30): Promise<void> {
     path: "/",
     expires: expiresAt,
   });
-  // Align participant cookie with the account's participant for cross-device consistency
-  try {
-    const user = await (prisma as any).user.findUnique({ where: { id: userId } });
-    const participantId: string | undefined = user?.participantId ?? undefined;
-    if (participantId) {
-      jar.set("participant_id", participantId, {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-      });
-    }
-  } catch {}
 }
 
 export async function getSessionUser(): Promise<{ id: string; username: string | null } | null> {

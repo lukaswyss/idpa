@@ -18,12 +18,12 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
   // Fetch data
   const memberships = await (prisma as any).challengeMembership.findMany({
     where: { challengeId: challenge.id },
-    include: { participant: true },
+    include: { user: true },
     orderBy: { joinedAt: "asc" },
   });
-  const participantIds = memberships.map((m: any) => m.participantId);
+  const userIds = memberships.map((m: any) => m.userId);
   const entries = await (prisma as any).dayEntry.findMany({
-    where: { challengeId: challenge.id, participantId: { in: participantIds } },
+    where: { challengeId: challenge.id, userId: { in: userIds } },
     include: { actions: true },
     orderBy: [{ date: "asc" }],
   });
@@ -51,16 +51,16 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 
   // Members sheet
   const wsMembers = wb.addWorksheet("Members");
-  wsMembers.addRow(["membershipId", "participantId", "joinedAt", "abGroup"]);
+  wsMembers.addRow(["membershipId", "userId", "joinedAt", "abGroup"]);
   for (const m of memberships as any[]) {
-    wsMembers.addRow([m.id, m.participantId, format(new Date(m.joinedAt), "yyyy-MM-dd"), m.abGroup ?? ""]);
+    wsMembers.addRow([m.id, m.userId, format(new Date(m.joinedAt), "yyyy-MM-dd"), m.abGroup ?? ""]);
   }
 
   // DayEntries sheet
   const wsEntries = wb.addWorksheet("DayEntries");
   wsEntries.addRow([
     "entryId",
-    "participantId",
+    "userId",
     "date",
     "totalScore",
     "note",
@@ -75,7 +75,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     const subAt = e.submittedAt ? format(new Date(e.submittedAt), "yyyy-MM-dd HH:mm:ss") : "";
     wsEntries.addRow([
       e.id,
-      e.participantId,
+      e.userId,
       format(new Date(e.date), "yyyy-MM-dd"),
       e.totalScore,
       e.note ?? "",

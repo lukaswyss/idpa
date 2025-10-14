@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db";
 import { format } from "date-fns";
 import { DailyForm } from "@/app/daily-form";
-import { getOrCreateParticipant } from "@/lib/participant";
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getSessionUser } from "@/lib/auth";
@@ -24,10 +23,9 @@ export default async function TodayPage() {
   const day = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   // Load latest joined challenge for activity context
-  const participant = await getOrCreateParticipant();
   const selected = await getSelectedChallengeCode();
   // Build challenge switcher items for this page
-  const memberships = await (prisma as any).challengeMembership.findMany({ where: { participantId: participant.id }, include: { challenge: true } });
+  const memberships = await (prisma as any).challengeMembership.findMany({ where: { userId: session.id }, include: { challenge: true } });
   const items = await Promise.all((memberships as any[]).map(async (m) => {
     const ch = (m as any).challenge as any;
     let openToday = false;
@@ -37,20 +35,20 @@ export default async function TodayPage() {
       const within = day >= new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate()) && day <= new Date(endDay.getFullYear(), endDay.getMonth(), endDay.getDate());
       if (within) {
         const nextDay = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
-        const entry = await (prisma as any).dayEntry.findFirst({ where: ({ participantId: participant.id, challengeId: ch.id, date: { gte: day, lt: nextDay } } as any), select: { id: true } });
+        const entry = await (prisma as any).dayEntry.findFirst({ where: ({ userId: session.id, challengeId: ch.id, date: { gte: day, lt: nextDay } } as any), select: { id: true } });
         openToday = !entry;
       }
     } catch {}
     return { id: ch.id as string, code: ch.code as string, title: ch.title as string, openToday, selected: ch.code === selected };
   }));
   let membership = await (prisma as any).challengeMembership.findFirst({
-    where: selected ? ({ participantId: participant.id, challenge: { code: selected } } as any) : ({ participantId: participant.id } as any),
+    where: selected ? ({ userId: session.id, challenge: { code: selected } } as any) : ({ userId: session.id } as any),
     orderBy: { joinedAt: "desc" },
     include: { challenge: true },
   });
   if (!membership && selected) {
     // Fallback to most recent if selected not found
-    membership = await (prisma as any).challengeMembership.findFirst({ where: { participantId: participant.id }, orderBy: { joinedAt: "desc" }, include: { challenge: true } });
+    membership = await (prisma as any).challengeMembership.findFirst({ where: { userId: session.id }, orderBy: { joinedAt: "desc" }, include: { challenge: true } });
   }
 
   // Ensure a default selected challenge is persisted for consistent UI selection
@@ -67,6 +65,8 @@ export default async function TodayPage() {
   let initialSelected: string[] = [];
   let initialNote: string | undefined = undefined;
   let todayQuestions: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] = [];
+  let definedQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] = [];
+  let dailyQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] = [];
   let todayAnswers: Record<string, unknown> | undefined = undefined;
   let preDone = false;
   let postDone = false;
@@ -86,14 +86,14 @@ export default async function TodayPage() {
       grid.push(new Date(d));
     }
     const entries = await (prisma as any).dayEntry.findMany({
-      where: ({ participantId: participant.id, challengeId: challenge.id, date: { gte: d0, lte: d1 } } as any),
+      where: ({ userId: session.id, challengeId: challenge.id, date: { gte: d0, lte: d1 } } as any),
     });
     // Load today's entry with actions for initial form state
     const today = new Date();
     const day = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const nextDay = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
     const todayEntry = await (prisma as any).dayEntry.findFirst({
-      where: ({ participantId: participant.id, challengeId: challenge.id, date: { gte: day, lt: nextDay } } as any),
+      where: ({ userId: session.id, challengeId: challenge.id, date: { gte: day, lt: nextDay } } as any),
       include: ({ actions: true } as any),
     });
     if (todayEntry) {
@@ -139,14 +139,14 @@ export default async function TodayPage() {
       if (preId) {
         preDone = Boolean(
           await (prisma as any).dayEntry.findFirst({
-            where: ({ participantId: participant.id, challengeId: challenge.id, note: { contains: `quiz:${preId}` } } as any),
+            where: ({ userId: session.id, challengeId: challenge.id, note: { contains: `quiz:${preId}` } } as any),
           })
         );
       }
       if (postId) {
         postDone = Boolean(
           await (prisma as any).dayEntry.findFirst({
-            where: ({ participantId: participant.id, challengeId: challenge.id, note: { contains: `quiz:${postId}` } } as any),
+            where: ({ userId: session.id, challengeId: challenge.id, note: { contains: `quiz:${postId}` } } as any),
           })
         );
       }
@@ -161,13 +161,18 @@ export default async function TodayPage() {
     }
 
     // Choose question source based on gating
+    // Behavior: show only pre‑quiz until done; afterwards show defined and daily as separate groups
     let sourceQuestions: any[] = [];
     if (!preDone && Array.isArray(cfg?.quiz?.pre?.questions)) {
       sourceQuestions = cfg.quiz.pre.questions as any[];
-    } else if (isDefinedDay && Array.isArray(cfg.defined?.questions)) {
-      sourceQuestions = cfg.defined.questions as any[];
-    } else if (Array.isArray(cfg.daily?.questions)) {
-      sourceQuestions = cfg.daily.questions as any[];
+    } else {
+      if (isDefinedDay && Array.isArray(cfg?.defined?.questions)) {
+        definedQuestionsOut = cfg.defined.questions as any[];
+      }
+      if (Array.isArray(cfg?.daily?.questions)) {
+        dailyQuestionsOut = cfg.daily.questions as any[];
+      }
+      sourceQuestions = [...definedQuestionsOut, ...dailyQuestionsOut];
     }
 
     // Normalize to { id, label, type, items?, stars? }
@@ -384,12 +389,14 @@ export default async function TodayPage() {
 
       {challenge && !beforeStart && !afterEnd ? (
         <div id="form">
-          <DailyForm
+            <DailyForm
             actions={actions}
             challengeCode={challenge.code}
             initialSelected={initialSelected}
             initialNote={initialNote}
             questions={todayQuestions}
+            definedQuestions={definedQuestionsOut}
+            dailyQuestions={dailyQuestionsOut}
             initialAnswers={todayAnswers}
             abMode={Boolean(challenge?.abEnabled)}
             abGroup={abGroup}

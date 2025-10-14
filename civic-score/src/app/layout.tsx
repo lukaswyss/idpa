@@ -8,7 +8,6 @@ import { ThemeProvider } from "next-themes";
 import ThemeToggle from "../components/theme-toggle";
 import { prisma } from "@/lib/db";
 import { Roboto_Mono as FontSans } from "next/font/google"
-import { getOrCreateParticipant } from "@/lib/participant";
 import { getOnboardingTasks } from "@/lib/onboarding-tasks";
 import TaskListButton from "@/components/task-list-button";
 import type { Metadata } from "next";
@@ -27,8 +26,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getSessionUser();
-  const participant = await getOrCreateParticipant();
-  const tasks = await getOnboardingTasks(participant.id, !!session);
+  const tasks = await getOnboardingTasks(session?.id ?? "", !!session);
   return (
     <html lang="de" suppressHydrationWarning className={fontSans.variable}>
       <body className="font-sans">

@@ -9,13 +9,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Participant {
-  id         String     @id @default(cuid())
-  createdAt  DateTime   @default(now())
-  entries    DayEntry[]
-  memberships ChallengeMembership[]
-  user       User?
-}
 
 model Action {
   id        String   @id @default(cuid())
@@ -30,7 +23,7 @@ model Action {
 
 model DayEntry {
   id            String        @id @default(cuid())
-  participantId String
+  userId        String
   date          DateTime
   note          String? 
   totalScore    Int
@@ -43,11 +36,10 @@ model DayEntry {
   durationMs    Int?
   // Optional association to a Challenge so entries can be scoped per challenge
   challengeId   String?
-  participant   Participant   @relation(fields: [participantId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
   challenge     Challenge?    @relation(fields: [challengeId], references: [id])
   actions       EntryAction[]
-  // Allow one entry per participant, date and challenge context (null means general)
-  @@unique([participantId, date, challengeId])
+  @@unique([userId, date, challengeId])
 }
 
 model EntryAction {
@@ -79,13 +71,13 @@ model Challenge {
 
 model ChallengeMembership {
   id            String      @id @default(cuid())
-  participantId String
+  userId        String
   challengeId   String
   joinedAt      DateTime    @default(now())
   abGroup       AbGroup?
-  participant   Participant @relation(fields: [participantId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
   challenge     Challenge   @relation(fields: [challengeId], references: [id])
-  @@unique([participantId, challengeId])
+  @@unique([userId, challengeId])
 }
 
 enum AbGroup {
@@ -93,20 +85,17 @@ enum AbGroup {
   B
 }
 
-// Users represent visitors of the site and can be anonymous by default.
-// They are linked 1:1 to a Participant for existing data continuity.
 model User {
   id            String     @id @default(cuid())
   createdAt     DateTime   @default(now())
-  participantId String     @unique
-  username      String?    @unique
-  passwordHash  String?
+  username      String     @unique
+  passwordHash  String
   // Count of successful interactive logins
   loginCount    Int        @default(0)
-
-  participant   Participant @relation(fields: [participantId], references: [id])
   adminRoles    AdminRole[]
   sessions      AuthSession[]
+  entries       DayEntry[]
+  memberships   ChallengeMembership[]
 }
 
 // AdminRole grants admin rights to a User. Presence of a record means admin.

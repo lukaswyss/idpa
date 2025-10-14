@@ -116,22 +116,6 @@ async function cleanupExpiredSessions(): Promise<void> {
   revalidatePath("/admin");
 }
 
-async function cleanupUnusedParticipants(): Promise<void> {
-  "use server";
-  const orphans = await prisma.participant.findMany({
-    where: {
-      entries: { none: {} },
-      memberships: { none: {} },
-      user: { is: null },
-    },
-    select: { id: true },
-  });
-  if (orphans.length) {
-    await prisma.participant.deleteMany({ where: { id: { in: orphans.map((p) => p.id) } } });
-  }
-  revalidatePath("/admin");
-}
-
 async function cleanupEmptyEndedChallenges(): Promise<void> {
   "use server";
   const now = new Date();
@@ -330,11 +314,6 @@ export default async function AdminPage() {
               <Button variant="outline" type="submit">Abgelaufene Sessions löschen</Button>
             </form>
             <p className="text-xs opacity-70">Entfernt alle AuthSessions mit Ablaufdatum in der Vergangenheit.</p>
-
-            <form action={cleanupUnusedParticipants}>
-              <Button variant="outline" type="submit">Unbenutzte Teilnehmer löschen</Button>
-            </form>
-            <p className="text-xs opacity-70">Teilnehmer ohne User, ohne Einträge und ohne Challenge-Mitgliedschaften.</p>
 
             <form action={cleanupEmptyEndedChallenges}>
               <Button variant="outline" type="submit">Leere, beendete Challenges löschen</Button>

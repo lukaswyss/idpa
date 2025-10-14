@@ -81,13 +81,13 @@ export function isWeeklyDue(cfg: any, date: Date = new Date()): boolean {
   }
 }
 
-export async function hasTodayEntry(participantId: string, challengeId?: string): Promise<boolean> {
+export async function hasTodayEntry(userId: string, challengeId?: string): Promise<boolean> {
   const now = new Date();
   const day = startOfDayLocal(now);
   const nextDay = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
   try {
     const entry = await (prisma as any).dayEntry.findFirst({
-      where: ({ participantId, challengeId, date: { gte: day, lt: nextDay } } as any),
+      where: ({ userId, challengeId, date: { gte: day, lt: nextDay } } as any),
       select: { id: true },
     });
     return Boolean(entry);
@@ -96,11 +96,11 @@ export async function hasTodayEntry(participantId: string, challengeId?: string)
   }
 }
 
-async function isQuizDoneByMarker(participantId: string, challengeId: string | undefined, markerId?: string): Promise<boolean> {
+async function isQuizDoneByMarker(userId: string, challengeId: string | undefined, markerId?: string): Promise<boolean> {
   if (!markerId) return false;
   try {
     const found = await (prisma as any).dayEntry.findFirst({
-      where: ({ participantId, challengeId, note: { contains: `quiz:${markerId}` } } as any),
+      where: ({ userId, challengeId, note: { contains: `quiz:${markerId}` } } as any),
       select: { id: true },
     });
     return Boolean(found);
@@ -109,22 +109,22 @@ async function isQuizDoneByMarker(participantId: string, challengeId: string | u
   }
 }
 
-export async function isPreQuizDone(participantId: string, challenge: any): Promise<boolean> {
+export async function isPreQuizDone(userId: string, challenge: any): Promise<boolean> {
   const cfg: any = challenge?.config || {};
   const preId: string | undefined = cfg?.quiz?.preId
     ?? cfg?.quizBefore?.id
     ?? cfg?.preQuizId
     ?? cfg?.pre?.id;
-  return isQuizDoneByMarker(participantId, challenge?.id, preId);
+  return isQuizDoneByMarker(userId, challenge?.id, preId);
 }
 
-export async function isPostQuizDone(participantId: string, challenge: any): Promise<boolean> {
+export async function isPostQuizDone(userId: string, challenge: any): Promise<boolean> {
   const cfg: any = challenge?.config || {};
   const postId: string | undefined = cfg?.quiz?.postId
     ?? cfg?.quizAfter?.id
     ?? cfg?.postQuizId
     ?? cfg?.post?.id;
-  return isQuizDoneByMarker(participantId, challenge?.id, postId);
+  return isQuizDoneByMarker(userId, challenge?.id, postId);
 }
 
 // Persist preferred/selected challenge in a cookie to switch contexts across pages

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { getOrCreateParticipant } from "@/lib/participant";
+import { getSessionUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,11 +9,12 @@ export async function POST(req: NextRequest) {
     const code = String(body?.code || "").trim();
     if (!code) return NextResponse.json({ ok: false, error: "Missing code" }, { status: 400 });
 
-    const participant = await getOrCreateParticipant();
+    const session = await getSessionUser();
+    if (!session) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     const challenge = await (prisma as any).challenge.findUnique({ where: { code } });
     if (!challenge) return NextResponse.json({ ok: false, error: "Unknown challenge" }, { status: 404 });
     const membership = await (prisma as any).challengeMembership.findUnique({
-      where: { participantId_challengeId: { participantId: participant.id, challengeId: challenge.id } },
+      where: { userId_challengeId: { userId: session.id, challengeId: challenge.id } },
     });
     if (!membership) return NextResponse.json({ ok: false, error: "Not a member" }, { status: 403 });
 

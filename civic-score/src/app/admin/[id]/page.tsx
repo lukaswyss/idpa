@@ -72,7 +72,7 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
   const challenge = await (prisma as any).challenge.findUnique({ where: { id: params.id } });
   if (!challenge) notFound();
 
-  const memberships = await (prisma as any).challengeMembership.findMany({ where: { challengeId: challenge.id }, include: { participant: true } });
+  const memberships = await (prisma as any).challengeMembership.findMany({ where: { challengeId: challenge.id }, include: { user: true } });
 
   const cfg = (challenge.config as any) || {};
 
@@ -216,7 +216,7 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
         <ul className="text-sm list-disc pl-5">
           {memberships.map((m: any) => (
             <li key={m.id} className="flex items-center gap-2">
-              <span>{m.participant.id}</span>
+              <span>{m.user.id}</span>
               <span className="opacity-70">{m.abGroup ? `(Gruppe ${m.abGroup})` : ""}</span>
               {(challenge as any).abEnabled && (
                 <div className="inline-flex items-center gap-1">
