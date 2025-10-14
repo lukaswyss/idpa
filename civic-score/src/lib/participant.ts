@@ -2,9 +2,31 @@
 
 import { cookies } from "next/headers";
 import { prisma } from "./db";
+import { getSessionUser } from "./auth";
 
 export async function getOrCreateParticipant() {
   const cookieStore = await cookies();
+
+  // If a user session exists, align participant with the user's participantId
+  try {
+    const session = await getSessionUser();
+    if (session) {
+      const user = await prisma.user.findUnique({ where: { id: session.id } });
+      const sessionParticipantId = user?.participantId;
+      if (sessionParticipantId) {
+        try {
+          cookieStore.set("participant_id", sessionParticipantId, { httpOnly: true, sameSite: "lax", path: "/" });
+        } catch {}
+        const existingBySession = await prisma.participant.findUnique({ where: { id: sessionParticipantId } });
+        if (existingBySession) return existingBySession;
+        try {
+          const createdBySession = await prisma.participant.create({ data: { id: sessionParticipantId } });
+          return createdBySession;
+        } catch {}
+      }
+    }
+  } catch {}
+
   const idFromCookie = cookieStore.get("participant_id")?.value;
 
   if (idFromCookie) {
