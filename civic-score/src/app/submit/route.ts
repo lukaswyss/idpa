@@ -6,7 +6,6 @@ import { z } from "zod";
 
 const BodySchema = z.object({
   selected: z.array(z.string()).default([]),
-  note: z.string().optional().default(""),
   answers: z.record(z.string(), z.any()).optional().default({}),
   // Challenge Code ist Pflicht: Nur Einträge innerhalb einer Challenge erlaubt
   challengeCode: z.string().min(1),
@@ -97,11 +96,11 @@ export async function POST(req: NextRequest) {
     if (entry) {
       entry = await (prisma as any).dayEntry.update({
         where: { id: entry.id },
-        data: { note: parsed.data.note, totalScore: total },
+        data: { totalScore: total },
       });
     } else {
       entry = await (prisma as any).dayEntry.create({
-        data: { userId: session.id, date: day, note: parsed.data.note, totalScore: total, challengeId },
+        data: { userId: session.id, date: day, totalScore: total, challengeId, markers: [] },
       });
     }
 
@@ -135,18 +134,18 @@ export async function POST(req: NextRequest) {
       `);
     } catch {}
 
-    // Mark pre-quiz as completed if pre-answers were submitted
+    // Mark pre-quiz as completed if pre-answers were submitted (store in markers array)
     try {
       const preId: string | undefined = cfg?.quiz?.preId;
       const hasPreAnswers = !!preId && Object.keys(parsed.data.answers || {}).some((k) => k.startsWith("pre_"));
       if (preId && hasPreAnswers) {
-        const currentNote: string = (entry as any)?.note || "";
         const marker = `quiz:${preId}`;
-        if (!currentNote.includes(marker)) {
-          const spaced = currentNote.length > 0 ? currentNote + " " : "";
+        const currentMarkers: string[] = Array.isArray((entry as any)?.markers) ? ((entry as any).markers as string[]) : [];
+        if (!currentMarkers.includes(marker)) {
+          const nextMarkers = Array.from(new Set([...(currentMarkers || []), marker]));
           entry = await (prisma as any).dayEntry.update({
             where: { id: entry.id },
-            data: { note: spaced + marker },
+            data: { markers: nextMarkers },
           });
         }
       }

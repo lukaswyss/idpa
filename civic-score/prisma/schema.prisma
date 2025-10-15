@@ -25,7 +25,8 @@ model DayEntry {
   id            String        @id @default(cuid())
   userId        String
   date          DateTime
-  note          String? 
+  // Replaced free-text note with structured markers to avoid non-anonymous context
+  markers       String[]      @default([])
   totalScore    Int
   // Optional JSON payload for structured answers to questions shown on a given day
   answers       Json?

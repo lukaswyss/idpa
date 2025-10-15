@@ -26,7 +26,16 @@ async function joinChallenge(_: any, formData: FormData): Promise<any> {
     try {
       // Assign A/B group if enabled for this challenge
       const abEnabled: boolean = Boolean((challenge as any).abEnabled);
-      const abGroup: "A" | "B" | undefined = abEnabled ? (Math.random() < 0.5 ? "A" : "B") : undefined;
+      let abGroup: "A" | "B" | undefined = undefined;
+      if (abEnabled) {
+        const [countA, countB] = await Promise.all([
+          (prisma as any).challengeMembership.count({ where: { challengeId: challenge.id, abGroup: "A" } }),
+          (prisma as any).challengeMembership.count({ where: { challengeId: challenge.id, abGroup: "B" } }),
+        ]);
+        if (countA < countB) abGroup = "A";
+        else if (countB < countA) abGroup = "B";
+        else abGroup = Math.random() < 0.5 ? "A" : "B";
+      }
       await (prisma as any).challengeMembership.create({
         data: { userId: session.id, challengeId: challenge.id, abGroup },
       });
@@ -49,7 +58,7 @@ async function joinChallenge(_: any, formData: FormData): Promise<any> {
               userId: session.id,
               date: startDay,
               totalScore: (challenge as any).startScore,
-              note: "Startscore",
+              markers: ["startscore"],
               challengeId: challenge.id,
             },
           });

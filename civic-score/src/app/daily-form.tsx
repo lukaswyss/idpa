@@ -15,26 +15,24 @@ type Action = {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner"
 import { Rating, RatingButton } from "@/components/ui/shadcn-io/rating";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Schema = z.object({
   selected: z.array(z.string()),
-  note: z.string().optional(),
   answers: z.record(z.string(), z.any()).optional(),
 });
 type FormData = z.infer<typeof Schema>;
 
-type Question = { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number };
+type Question = { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number; weight?: number };
 
-export function DailyForm({ actions, challengeCode, initialSelected, initialNote, questions, definedQuestions, dailyQuestions, initialAnswers, abMode, abGroup }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; initialNote?: string; questions?: Question[]; definedQuestions?: Question[]; dailyQuestions?: Question[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B" }) {
+export function DailyForm({ actions, challengeCode, initialSelected, questions, definedQuestions, dailyQuestions, initialAnswers, abMode, abGroup }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; questions?: Question[]; definedQuestions?: Question[]; dailyQuestions?: Question[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B" }) {
   const groups = actions.reduce<Record<string, Action[]>>((acc, a) => {
     (acc[a.category] ||= []).push(a);
     return acc;
   }, {});
-  const form = useForm<FormData>({ resolver: zodResolver(Schema), defaultValues: { selected: initialSelected ?? [], note: initialNote ?? "", answers: initialAnswers ?? {} }});
+  const form = useForm<FormData>({ resolver: zodResolver(Schema), defaultValues: { selected: initialSelected ?? [], answers: initialAnswers ?? {} }});
   const [pending, start] = useTransition();
   const firstRef = useRef<Date | null>(null);
   const lastRef = useRef<Date | null>(null);
@@ -80,7 +78,7 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
           <div className="font-medium">{title}</div>
           {list.map((q) => (
             <div key={q.id} className="space-y-1">
-              <div className="text-sm">{q.label}</div>
+              <div className="text-sm">{q.label}  { abGroup === "A" ? q.weight && q.weight > 0 ? `+${q.weight}`:q.weight : "" }</div>
               {q.type === "text" && (
                 <input className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e)=> { markActivity(); form.setValue("answers", { ...(form.getValues("answers")||{}), [q.id]: e.target.value }); }} />
               )}
@@ -165,11 +163,6 @@ export function DailyForm({ actions, challengeCode, initialSelected, initialNote
       {definedQuestions && definedQuestions.length > 0 && renderQuestions("Sonderfragen", definedQuestions)}
       {dailyQuestions && dailyQuestions.length > 0 && renderQuestions("Tagesfragen", dailyQuestions)}
       {!definedQuestions && !dailyQuestions && questions && questions.length > 0 && renderQuestions("Zusatzfragen", questions)}
-
-      <div className="space-y-2">
-        <div className="text-sm font-medium">Notiz (optional)</div>
-        <Textarea {...form.register("note", { onChange: ()=> markActivity() })} placeholder="Kontext, falls nötig…" />
-      </div>
 
       <Button type="submit" disabled={pending}>Speichern</Button>
     </form>

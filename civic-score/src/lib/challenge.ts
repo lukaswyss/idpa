@@ -100,7 +100,7 @@ async function isQuizDoneByMarker(userId: string, challengeId: string | undefine
   if (!markerId) return false;
   try {
     const found = await (prisma as any).dayEntry.findFirst({
-      where: ({ userId, challengeId, note: { contains: `quiz:${markerId}` } } as any),
+      where: ({ userId, challengeId, markers: { has: `quiz:${markerId}` } } as any),
       select: { id: true },
     });
     return Boolean(found);

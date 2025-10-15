@@ -10,10 +10,11 @@ import { CopyText } from "@/components/copy-text";
 import { DateInput } from "@/components/date-input";
 import { getSessionUser } from "@/lib/auth";
 import LoginRequired from "@/components/login-required";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, InfoIcon } from "lucide-react";
 import { ExportExcelButton } from "@/components/export-excel-button";
 import { AbGroupSelect } from "@/components/ab-group-select";
 import { MembershipAbGroupEditor } from "@/components/membership-ab-group-editor";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 async function addQuestionDate(formData: FormData): Promise<void> {
   "use server";
@@ -174,14 +175,14 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
 
 
       <div className="md:hidden" >
-            <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
-          </div>
+        <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
+      </div>
       <section className="space-y-1">
         <div className="flex items-center justify-between w-full">
           <CopyText value={challenge.code} label="Zugangscode" />
-            <div className="hidden md:block" >
-              <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
-            </div>
+          <div className="hidden md:block" >
+            <ExportExcelButton challengeId={challenge.id} challengeCode={challenge.code} />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm opacity-70">Zeitraum</span>
@@ -207,6 +208,17 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
           }}>
             <Button type="submit" size="sm" variant="outline">{(challenge as any).abEnabled ? "A/B deaktivieren" : "A/B aktivieren"}</Button>
           </form>
+          <div className="hidden md:block">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="size-5 text-neutral-800 dark:text-neutral-200" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="flex flex-col gap-1"  >
+                <span>A - Sehen ihren Punktestand</span>
+                <span>B - Sehen keinen Punktestand</span>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </section>
 

@@ -168,9 +168,9 @@ async function cleanupEmptyDayEntries(): Promise<void> {
       answers: null,
       totalScore: 0,
     },
-    select: { id: true, note: true },
+    select: { id: true, markers: true },
   });
-  const toDelete = empties.filter((e: any) => !e.note || e.note.trim() === "").map((e: any) => e.id);
+  const toDelete = empties.filter((e: any) => !Array.isArray(e.markers) || e.markers.length === 0).map((e: any) => e.id);
   if (toDelete.length) {
     await prisma.entryAction.deleteMany({ where: { dayEntryId: { in: toDelete } } });
     await (prisma as any).dayEntry.deleteMany({ where: { id: { in: toDelete } } });
