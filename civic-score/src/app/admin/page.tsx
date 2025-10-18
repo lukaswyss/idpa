@@ -14,6 +14,7 @@ import { getSessionUser } from "@/lib/auth";
 import { generateUniqueChallengeCode } from "@/lib/challenge";
 import LoginRequired from "@/components/login-required";
 import { CreateChallengeForm } from "@/components/create-challenge-form";
+import { getDefaultChallengeConfig } from "@/lib/challenge-templates";
 import { CreateChallengeDialog } from "@/components/create-challenge-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusIcon } from "lucide-react";
@@ -47,6 +48,7 @@ async function createChallenge(formData: FormData): Promise<{ ok: boolean; id?: 
   }
 
   const generatedCode = await generateUniqueChallengeCode();
+  const cfg = parsed.data.config ? safeParseJson(parsed.data.config) : getDefaultChallengeConfig();
   const created = await (prisma as any).challenge.create({
     data: {
       title: parsed.data.title,
@@ -55,10 +57,29 @@ async function createChallenge(formData: FormData): Promise<{ ok: boolean; id?: 
       startDate,
       endDate,
       startScore: parsed.data.startScore ?? 0,
-      config: parsed.data.config ? safeParseJson(parsed.data.config) : undefined,
+      config: cfg,
       abEnabled: parsed.data.abEnabled === "true",
     },
   });
+
+  // Upsert Actions based on daily questions in the challenge config template
+  try {
+    const questions: any[] = Array.isArray((cfg as any)?.daily?.questions) ? (cfg as any).daily.questions : [];
+    for (const q of questions) {
+      const id = (q as any)?.id;
+      const label = (q as any)?.label;
+      const weight = Number((q as any)?.weight ?? 0);
+      const category = String((q as any)?.category ?? "General");
+      if (!id || !label || !Number.isFinite(weight)) continue;
+      const code = `Q_${String(id).toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
+      const polarity = weight >= 0 ? "positive" : "negative";
+      await prisma.action.upsert({
+        where: { code },
+        update: { label, category, weight, polarity },
+        create: { code, label, category, weight, polarity },
+      });
+    }
+  } catch {}
   revalidatePath("/admin");
   return { ok: true, id: created.id as string, code: created.code as string, title: created.title as string };
 }

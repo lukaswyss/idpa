@@ -151,6 +151,23 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
 
+    // Mark post-quiz as completed if post-answers were submitted (store in markers array)
+    try {
+      const postId: string | undefined = cfg?.quiz?.postId;
+      const hasPostAnswers = !!postId && Object.keys(parsed.data.answers || {}).some((k) => k.startsWith("post_"));
+      if (postId && hasPostAnswers) {
+        const marker = `quiz:${postId}`;
+        const currentMarkers: string[] = Array.isArray((entry as any)?.markers) ? ((entry as any).markers as string[]) : [];
+        if (!currentMarkers.includes(marker)) {
+          const nextMarkers = Array.from(new Set([...(currentMarkers || []), marker]));
+          entry = await (prisma as any).dayEntry.update({
+            where: { id: entry.id },
+            data: { markers: nextMarkers },
+          });
+        }
+      }
+    } catch {}
+
     // Link Actions (ersetzen)
     await prisma.entryAction.deleteMany({ where: { dayEntryId: entry.id }});
     if (actions.length) {

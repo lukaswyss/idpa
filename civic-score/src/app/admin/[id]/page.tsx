@@ -203,7 +203,34 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
           </code>
           <form action={async () => {
             "use server";
-            await (prisma as any).challenge.update({ where: { id: challenge.id }, data: { abEnabled: !(challenge as any).abEnabled } });
+            const wasEnabled = Boolean((challenge as any).abEnabled);
+            const updated = await (prisma as any).challenge.update({ where: { id: challenge.id }, data: { abEnabled: !wasEnabled } });
+
+            // If we just enabled A/B for the first time (or after being off),
+            // assign all existing members without a group in alternating order to keep balance.
+            if (!wasEnabled && Boolean((updated as any).abEnabled)) {
+              // Count existing grouped memberships to decide which group starts
+              const [countA, countB] = await Promise.all([
+                (prisma as any).challengeMembership.count({ where: { challengeId: challenge.id, abGroup: "A" } }),
+                (prisma as any).challengeMembership.count({ where: { challengeId: challenge.id, abGroup: "B" } }),
+              ]);
+
+              // Get unassigned memberships in stable order (oldest first)
+              const unassigned: any[] = await (prisma as any).challengeMembership.findMany({
+                where: { challengeId: challenge.id, abGroup: null },
+                orderBy: { joinedAt: "asc" },
+                select: { id: true },
+              });
+
+              if (unassigned.length > 0) {
+                let next: "A" | "B" = countA <= countB ? "A" : "B";
+                for (const m of unassigned) {
+                  const group = next;
+                  await (prisma as any).challengeMembership.update({ where: { id: m.id }, data: { abGroup: group } });
+                  next = next === "A" ? "B" : "A";
+                }
+              }
+            }
             revalidatePath(`/admin/${challenge.id}`);
           }}>
             <Button type="submit" size="sm" variant="outline">{(challenge as any).abEnabled ? "A/B deaktivieren" : "A/B aktivieren"}</Button>

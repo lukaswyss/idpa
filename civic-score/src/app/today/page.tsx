@@ -85,9 +85,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
   let days: { date: Date; score: number; hasEntry: boolean }[] = [];
   let initialSelected: string[] = [];
   // removed: note field (non-anonymous context)
-  let todayQuestions: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] = [];
   let definedQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] | undefined = undefined;
-  let dailyQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] | undefined = undefined;
   let todayAnswers: Record<string, unknown> | undefined = undefined;
   let preDone = false;
   let postDone = false;
@@ -98,6 +96,27 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
   let beforeStart = false;
   let afterEnd = false;
   let stats: { daysWithEntry: number; totalDays: number; totalScore: number; avgScoreActive: number; completionRate: number; longestStreak: number; totalActions: number } | null = null;
+  let preQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] | undefined = undefined;
+  let postQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] | undefined = undefined;
+  const normalizeQuestions = (arr: any[]): { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] => {
+    return (arr || [])
+      .map((q: any, idx: number) => {
+        if (q && typeof q === "object" && "id" in q && "label" in q && "type" in q) {
+          const t = (q as any).type;
+          if (t === "text" || t === "boolean" || t === "number" || t === "select" || t === "stars") {
+            return q as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number };
+          }
+        }
+        if (q && typeof q === "object" && "text" in q) {
+          return { id: `q${idx}`, label: String((q as any).text), type: "boolean" as const };
+        }
+        if (typeof q === "string") {
+          return { id: `q${idx}`, label: q, type: "boolean" as const };
+        }
+        return null;
+      })
+      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[];
+  };
   if (challenge) {
     // Build range of days between start and end
     const d0 = new Date(challenge.startDate);
@@ -178,53 +197,44 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
       } catch { }
     }
 
-    // Choose question source based on gating
-    // Behavior: show only pre‑quiz until done (on any day); afterwards show defined and daily as separate groups
-    let sourceQuestions: any[] = [];
-    if (!preDone && Array.isArray(cfg?.quiz?.pre?.questions)) {
-      sourceQuestions = cfg.quiz.pre.questions as any[];
-    } else {
-      if (isDefinedDay && Array.isArray(cfg?.defined?.questions)) {
-        definedQuestionsOut = cfg.defined.questions as any[];
-      }
-      if (Array.isArray(cfg?.daily?.questions)) {
-        dailyQuestionsOut = cfg.daily.questions as any[];
-      }
-      sourceQuestions = [...(definedQuestionsOut ?? []), ...(dailyQuestionsOut ?? [])];
-    }
-
-    // Normalize to { id, label, type, items?, stars? }
-    todayQuestions = sourceQuestions
-      .map((q: any, idx: number) => {
-        if (q && typeof q === "object" && "id" in q && "label" in q && "type" in q) {
-          const t = (q as any).type;
-          if (t === "text" || t === "boolean" || t === "number" || t === "select" || t === "stars") {
-            return q as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number };
-          }
-        }
-        if (q && typeof q === "object" && "text" in q) {
-          return { id: `q${idx}`, label: String((q as any).text), type: "boolean" as const };
-        }
-        if (typeof q === "string") {
-          return { id: `q${idx}`, label: q, type: "boolean" as const };
-        }
-        return null;
-      })
-      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[];
-
-    // Safety: dedupe by id to avoid React key collisions and answer overwrites
-    if (Array.isArray(todayQuestions) && todayQuestions.length > 0) {
-      const seen = new Set<string>();
-      todayQuestions = todayQuestions.filter((q) => {
-        if (seen.has(q.id)) return false;
-        seen.add(q.id);
-        return true;
-      });
-    }
-
     // Weekly and end-of-challenge signals
     showWeekly = hasWeeklyConfig(cfg) && isWeeklyDue(cfg, day);
     lastDay = isLastDay(challenge, day);
+
+    // Build pre-quiz questions for rendering
+    const preQuestionsRaw: any[] = Array.isArray(cfg?.quiz?.pre?.questions)
+      ? cfg.quiz.pre.questions
+      : Array.isArray(cfg?.quizBefore?.questions)
+        ? cfg.quizBefore.questions
+        : Array.isArray(cfg?.preQuiz?.questions)
+          ? cfg.preQuiz.questions
+          : Array.isArray(cfg?.pre?.questions)
+            ? cfg.pre.questions
+            : Array.isArray(cfg?.quiz?.pre)
+              ? cfg.quiz.pre
+              : [];
+    preQuestionsOut = normalizeQuestions(preQuestionsRaw);
+
+    // Build post-quiz questions for rendering
+    const postQuestionsRaw: any[] = Array.isArray(cfg?.quiz?.post?.questions)
+      ? cfg.quiz.post.questions
+      : Array.isArray(cfg?.quizAfter?.questions)
+        ? cfg.quizAfter.questions
+        : Array.isArray(cfg?.postQuiz?.questions)
+          ? cfg.postQuiz.questions
+          : Array.isArray(cfg?.post?.questions)
+            ? cfg.post.questions
+            : Array.isArray(cfg?.quiz?.post)
+              ? cfg.quiz.post
+              : [];
+    postQuestionsOut = normalizeQuestions(postQuestionsRaw);
+
+    // Only populate defined questions for defined days
+    if (isDefinedDay && Array.isArray(cfg?.defined?.questions)) {
+      definedQuestionsOut = normalizeQuestions(cfg.defined.questions);
+    } else {
+      definedQuestionsOut = undefined;
+    }
 
     // Window flags & stats
     const startDay = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate());
@@ -372,7 +382,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
               <AlertDescription>
                 <div className="flex items-center gap-2">
                   <span>Schließe die Challenge mit dem Post‑Quiz ab.</span>
-                  <Link href="/onboarding"><Button size="sm" variant="outline">Zum Abschluss</Button></Link>
+                  <Link href="#form"><Button size="sm" variant="outline">Zum Abschluss</Button></Link>
                 </div>
               </AlertDescription>
             </Alert>
@@ -417,12 +427,13 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
             actions={actions}
             challengeCode={challenge.code}
             initialSelected={initialSelected}
-            questions={todayQuestions}
             definedQuestions={definedQuestionsOut}
-            dailyQuestions={dailyQuestionsOut}
             initialAnswers={todayAnswers}
             abMode={Boolean(challenge?.abEnabled)}
             abGroup={abGroup}
+            preQuestions={!preDone ? preQuestionsOut : undefined}
+            postQuestions={lastDay && !postDone ? postQuestionsOut : undefined}
+            showOnlyPre={!preDone}
           />
         </div>
       ) : (
