@@ -7,10 +7,10 @@ export default function InfoPage() {
         <p className="text-sm opacity-80">
           Während unserer Interdisziplinäre Projektarbeit (IDPA) haben wir uns für das Projekt "Civic Score" entschieden.
           Civic Score ist ein Projekt, das daurauf ausgerichtet ist unsere alltäglichen aktionen festzuhalten und auszuwerten.
-          Dabei gibt es die Sogenannte Challange, der die verschienen Probanden beitreten können.
+          Dabei gibt es die Sogenannte Challenge, der die verschiedenen Probanden beitreten können.
           <br />
           <br />
-          <strong>Unsere höchste Priorität ist es, die Software 100% anonymisiert und sicher zu halten.</strong> Dafür wird den Probanden ein anonymer benutzer erstellt, welchen sie slebst zusammen mit dem Passwort abspeichern müssen.
+          <strong>Unsere höchste Priorität ist es, die Software 100% anonymisiert und sicher zu halten.</strong> Dafür wird den Probanden ein anonymer benutzer erstellt, welchen sie selbst zusammen mit dem Passwort abspeichern müssen.
         </p>
       </section>
 
@@ -18,8 +18,8 @@ export default function InfoPage() {
         <h2 className="text-xl font-semibold">So funktioniert es</h2>
         <ul className="list-disc pl-6 space-y-1 text-sm">
           <li>Challenge beitreten mit deinem Code</li>
-          <li>Jeden Tag der Challange die Fragen beantworten</li>
-          <li>Am Ende der Challange die Fragen beantworten</li>
+          <li>Jeden Tag der Challenge die Fragen beantworten</li>
+          <li>Am Ende der Challenge die Fragen beantworten</li>
         </ul>
       </section>
 

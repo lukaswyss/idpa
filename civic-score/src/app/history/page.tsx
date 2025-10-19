@@ -42,8 +42,10 @@ export default async function HistoryPage({ searchParams }: { searchParams?: Rec
   const abGroupOverride: "A" | "B" | undefined = devEnabled && (abParam === "A" || abParam === "B") ? (abParam as "A" | "B") : undefined;
   const abGroup: "A" | "B" | undefined = abGroupOverride ?? abGroupMembership;
 
+  // Filter strictly to the selected challenge if available
+  const challengeId = (membership as any)?.challenge?.id as string | undefined;
   const entries = await prisma.dayEntry.findMany({
-    where: { userId: session.id },
+    where: challengeId ? ({ userId: session.id, challengeId } as any) : ({ userId: session.id } as any),
     orderBy: { date: "desc" },
     select: {
       id: true,

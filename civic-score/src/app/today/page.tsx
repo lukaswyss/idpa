@@ -407,7 +407,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
             <AlertTitle>Challenge beendet</AlertTitle>
             <AlertDescription>
               <div>Zeitraum: {format(new Date(challenge.startDate), "dd.MM.yyyy")} – {format(new Date(challenge.endDate), "dd.MM.yyyy")}.</div>
-              <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="felex md:grid md:grid-cols-2 gap-4 md:gap-2 mt-2">
                 <div><strong>Tage mit Eintrag:</strong> {stats.daysWithEntry} / {stats.totalDays} ({stats.completionRate}%)</div>
                 {abEnabled && abGroup === "A" && <div><strong>Gesamtpunkte:</strong> {stats.totalScore}</div>}
                 {abEnabled && abGroup === "A" && <div><strong>Ø Punkte/aktiver Tag:</strong> {stats.avgScoreActive}</div>}
