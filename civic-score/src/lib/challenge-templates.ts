@@ -16,6 +16,7 @@ export const DEFAULT_CHALLENGE_CONFIG: any = {
         ]},
         { id: "pre_occupation", label: "Zu welcher Berufsgruppe gehörst du?", type: "select" , items: [
           { id: "student", label: "Student" },
+          { id: "apprentice", label: "Lernender" },
           { id: "worker", label: "Arbeiter" },
           { id: "selfemployed", label: "Selbstständig" },
           { id: "retired", label: "Rentner" },

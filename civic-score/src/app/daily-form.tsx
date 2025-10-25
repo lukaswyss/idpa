@@ -86,10 +86,26 @@ export function DailyForm({ actions, challengeCode, initialSelected, questions, 
                 <input type="number" className="border rounded px-2 py-1 w-full" value={(form.watch("answers")?.[q.id] as any) ?? ""} onChange={(e) => { markActivity(); form.setValue("answers", { ...(form.getValues("answers") || {}), [q.id]: e.target.value ? Number(e.target.value) : undefined }); }} />
               )}
               {q.type === "boolean" && (
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={Boolean(form.watch("answers")?.[q.id])} onChange={(e) => { markActivity(); form.setValue("answers", { ...(form.getValues("answers") || {}), [q.id]: e.target.checked }); }} />
-                  <span className="text-sm">Ja</span>
-                </label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name={`bool-${q.id}`}
+                      checked={Boolean(form.watch("answers")?.[q.id]) === true}
+                      onChange={() => { markActivity(); form.setValue("answers", { ...(form.getValues("answers") || {}), [q.id]: true }); }}
+                    />
+                    <span className="text-sm">Ja</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name={`bool-${q.id}`}
+                      checked={form.watch("answers")?.[q.id] === false}
+                      onChange={() => { markActivity(); form.setValue("answers", { ...(form.getValues("answers") || {}), [q.id]: false }); }}
+                    />
+                    <span className="text-sm">Nein</span>
+                  </label>
+                </div>
               )}
               {q.type === "select" && Array.isArray((q as any).items) && (
                 <Select
