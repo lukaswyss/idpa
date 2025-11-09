@@ -57,9 +57,93 @@ export function isLastDay(challenge: { endDate: Date }, date: Date = new Date())
 export function isDefinedDay(cfg: any, date: Date): boolean {
   const dayKey = formatYmd(date);
   try {
-    return Boolean(cfg && cfg.defined && Array.isArray(cfg.defined.days) && cfg.defined.days.includes(dayKey));
+    if (!cfg || !cfg.defined) return false;
+    // Legacy shape: { defined: { days: string[], questions: Question[] } }
+    if (Array.isArray(cfg.defined.days)) return cfg.defined.days.includes(dayKey);
+    // New shape: { defined: { [setKey]: { days: string[], questions: Question[] } } }
+    if (cfg.defined && typeof cfg.defined === "object") {
+      for (const value of Object.values(cfg.defined)) {
+        if (value && typeof value === "object" && Array.isArray((value as any).days) && (value as any).days.includes(dayKey)) {
+          return true;
+        }
+      }
+    }
+    return false;
   } catch {
     return false;
+  }
+}
+
+// Returns the matching defined set key for the given date, or "__default" for legacy shape, or null
+export function getDefinedSetKeyForDate(cfg: any, date: Date): string | null {
+  const dayKey = formatYmd(date);
+  try {
+    if (!cfg || !cfg.defined) return null;
+    if (Array.isArray(cfg.defined.days)) return "__default";
+    if (cfg.defined && typeof cfg.defined === "object") {
+      for (const [key, value] of Object.entries(cfg.defined)) {
+        if (value && typeof value === "object" && Array.isArray((value as any).days) && (value as any).days.includes(dayKey)) {
+          return key;
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Returns the list of defined questions applicable for the given date based on the set configuration
+export function getDefinedQuestionsForDate(cfg: any, date: Date): any[] {
+  try {
+    if (!cfg || !cfg.defined) return [];
+    const setKey = getDefinedSetKeyForDate(cfg, date);
+    if (setKey === "__default") {
+      const rootQs = Array.isArray(cfg.defined.questions) ? cfg.defined.questions : [];
+      if (rootQs.length > 0) return rootQs;
+      // Fallback 1: if the day is marked on the legacy root but questions live in a single set,
+      // return that set's questions to avoid silent empty state.
+      if (cfg.defined && typeof cfg.defined === "object") {
+        const setsEntries: [string, any][] = Object.entries(cfg.defined).filter(
+          ([, value]) => value && typeof value === "object"
+        ) as [string, any][];
+        const setsWithQuestions = setsEntries.filter(
+          ([, v]) => Array.isArray((v as any).questions) && (v as any).questions.length > 0
+        );
+        if (setsWithQuestions.length === 1) {
+          return (setsWithQuestions[0][1] as any).questions as any[];
+        }
+        // Fallback 2: prefer a set explicitly named "weekly" if present
+        const weekly = (cfg.defined as any).weekly;
+        if (weekly && typeof weekly === "object" && Array.isArray(weekly.questions) && weekly.questions.length > 0) {
+          return weekly.questions as any[];
+        }
+        // Fallback 3: merge all available set questions (de-duplicated by id)
+        if (setsWithQuestions.length > 1) {
+          const merged: any[] = [];
+          const seen = new Set<string>();
+          for (const [, v] of setsWithQuestions) {
+            const qs: any[] = (v as any).questions || [];
+            for (const q of qs) {
+              const id = (q as any)?.id;
+              if (id && !seen.has(id)) {
+                seen.add(id);
+                merged.push(q);
+              }
+            }
+          }
+          if (merged.length > 0) return merged;
+        }
+      }
+      return [];
+    }
+    if (typeof setKey === "string" && setKey) {
+      const setObj: any = (cfg.defined as any)[setKey];
+      return Array.isArray(setObj?.questions) ? setObj.questions : [];
+    }
+    return [];
+  } catch {
+    return [];
   }
 }
 

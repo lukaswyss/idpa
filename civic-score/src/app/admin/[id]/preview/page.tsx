@@ -95,9 +95,25 @@ export default async function AdminQuestionsPreview({ params }: { params: { id: 
           ? cfg.dailyQuestions
           : []
   );
-  const definedQuestions = normalizeQuestions(
-    Array.isArray(cfg?.defined?.questions) ? cfg.defined.questions : []
-  );
+  // Merge defined questions from legacy single-set and all multi-sets, de-duplicated by id
+  const definedMerged: any[] = [];
+  const seenIds = new Set<string>();
+  if (Array.isArray(cfg?.defined?.questions)) {
+    for (const q of cfg.defined.questions as any[]) {
+      const id = (q as any)?.id;
+      if (id && !seenIds.has(id)) { seenIds.add(id); definedMerged.push(q); }
+    }
+  }
+  if (cfg?.defined && typeof cfg.defined === "object") {
+    for (const value of Object.values(cfg.defined)) {
+      const qs: any[] = Array.isArray((value as any)?.questions) ? (value as any).questions : [];
+      for (const q of qs) {
+        const id = (q as any)?.id;
+        if (id && !seenIds.has(id)) { seenIds.add(id); definedMerged.push(q); }
+      }
+    }
+  }
+  const definedQuestions = normalizeQuestions(definedMerged);
 
   function QuestionList({ title, questions }: { title: string; questions: SimpleQuestion[] }) {
     return (

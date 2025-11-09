@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth";
 import { z } from "zod";
+import { getDefinedQuestionsForDate } from "@/lib/challenge";
 
 const BodySchema = z.object({
   selected: z.array(z.string()).default([]),
@@ -60,7 +61,8 @@ export async function POST(req: NextRequest) {
     const weightByQuestionId: Record<string, number> = {};
     const candidates: any[] = [
       Array.isArray(cfg?.daily?.questions) ? cfg.daily.questions : [],
-      Array.isArray(cfg?.defined?.questions) ? cfg.defined.questions : [],
+      // Use defined questions for today's date, supporting multi-set shape
+      getDefinedQuestionsForDate(cfg, day),
       Array.isArray(cfg?.quiz?.pre?.questions) ? cfg.quiz.pre.questions : [],
       Array.isArray(cfg?.quiz?.post?.questions) ? cfg.quiz.post.questions : [],
     ].flat();

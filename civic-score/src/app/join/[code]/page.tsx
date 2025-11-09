@@ -57,26 +57,7 @@ export default async function JoinByCodePage({ params }: { params: { code: strin
         jar.set("selected_challenge", String((challenge as any).code), { httpOnly: false, sameSite: "lax", path: "/" });
       } catch {}
 
-      // Startscore-Eintrag am Starttag, falls konfiguriert
-      if (challenge.startDate && (challenge as any).startScore && (challenge as any).startScore > 0) {
-        const start = new Date(challenge.startDate);
-        const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-        const next = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate() + 1);
-        const existingStart = await (prisma as any).dayEntry.findFirst({
-          where: ({ userId: session.id, challengeId: challenge.id, date: { gte: startDay, lt: next } } as any),
-        });
-        if (!existingStart) {
-          await (prisma as any).dayEntry.create({
-            data: {
-              userId: session.id,
-              date: startDay,
-              totalScore: (challenge as any).startScore,
-              markers: ["startscore"],
-              challengeId: challenge.id,
-            },
-          });
-        }
-      }
+      // No start score should be added as a DayEntry
     } catch {}
   }
 

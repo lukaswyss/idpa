@@ -8,22 +8,23 @@ import { Button } from "@/components/ui/button";
 import LoginRequired from "@/components/login-required";
 import { Prisma } from "@prisma/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { isLastDay, isDefinedDay as isDefinedDayHelper, hasWeeklyConfig, isWeeklyDue, getSelectedChallengeCode, setSelectedChallengeCode } from "@/lib/challenge";
+import { isLastDay, isDefinedDay as isDefinedDayHelper, hasWeeklyConfig, isWeeklyDue, getSelectedChallengeCode, setSelectedChallengeCode, getDefinedQuestionsForDate } from "@/lib/challenge";
 import { SwordsIcon } from "lucide-react";
 import LoginSuccessToast from "@/app/today/login-success.client";
 import { ChallengeSwitcher } from "@/components/challenge-switcher";
 import { isCurrentUserAdmin } from "@/lib/user";
 import { DevModeControls } from "@/components/dev-mode-controls";
+import ScoreSummary from "@/app/today/score-summary.client";
 
-export default async function TodayPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
+export default async function TodayPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await getSessionUser();
   if (!session) {
     return <LoginRequired message="Bitte anmelden, um deine Fragen zu beantworten." />;
   }
-  const actions = await prisma.action.findMany({ orderBy: [{ category: "asc" }, { label: "asc" }] });
   const isAdmin = await isCurrentUserAdmin();
+  const resolvedSearchParams: Record<string, string | string[] | undefined> | undefined = searchParams ? await searchParams : undefined;
   const getParam = (key: string): string | undefined => {
-    const v = searchParams?.[key];
+    const v = resolvedSearchParams?.[key];
     return Array.isArray(v) ? v[0] : v;
   };
   const devEnabled = isAdmin && ((getParam("dev") === "1") || (getParam("dev") === "true"));
@@ -85,7 +86,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
   let days: { date: Date; score: number; hasEntry: boolean }[] = [];
   let initialSelected: string[] = [];
   // removed: note field (non-anonymous context)
-  let definedQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] | undefined = undefined;
+  let definedQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number; weight?: number }[] | undefined = undefined;
   let todayAnswers: Record<string, unknown> | undefined = undefined;
   let preDone = false;
   let postDone = false;
@@ -96,26 +97,32 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
   let beforeStart = false;
   let afterEnd = false;
   let stats: { daysWithEntry: number; totalDays: number; totalScore: number; avgScoreActive: number; completionRate: number; longestStreak: number; totalActions: number } | null = null;
-  let preQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] | undefined = undefined;
-  let postQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] | undefined = undefined;
-  const normalizeQuestions = (arr: any[]): { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[] => {
+  let preQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number; weight?: number }[] | undefined = undefined;
+  let postQuestionsOut: { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number; weight?: number }[] | undefined = undefined;
+  let actions: any[] = [];
+  const normalizeQuestions = (arr: any[]): { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number; weight?: number }[] => {
     return (arr || [])
       .map((q: any, idx: number) => {
         if (q && typeof q === "object" && "id" in q && "label" in q && "type" in q) {
           const t = (q as any).type;
           if (t === "text" || t === "boolean" || t === "number" || t === "select" || t === "stars") {
-            return q as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number };
+            // Preserve optional weight/stars/items if present
+            const weight = typeof (q as any).weight === "number" ? (q as any).weight : undefined;
+            const stars = typeof (q as any).stars === "number" ? (q as any).stars : undefined;
+            const items = Array.isArray((q as any).items) ? (q as any).items : undefined;
+            return { id: String((q as any).id), label: String((q as any).label), type: t, items, stars, weight };
           }
         }
         if (q && typeof q === "object" && "text" in q) {
-          return { id: `q${idx}`, label: String((q as any).text), type: "boolean" as const };
+          const weight = typeof (q as any).weight === "number" ? (q as any).weight : undefined;
+          return { id: `q${idx}`, label: String((q as any).text), type: "boolean" as const, weight };
         }
         if (typeof q === "string") {
           return { id: `q${idx}`, label: q, type: "boolean" as const };
         }
         return null;
       })
-      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number }[];
+      .filter(Boolean) as { id: string; label: string; type: "text" | "boolean" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number; weight?: number }[];
   };
   if (challenge) {
     // Build range of days between start and end
@@ -168,6 +175,27 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
 
     // Determine today's questions with quiz gating: show pre-quiz first until completed
     const cfg: any = challenge.config || {};
+
+    // Load actions and keep the order defined by the template (challenge config)
+    try {
+      const allActions = await prisma.action.findMany();
+      const desired = Array.isArray(cfg?.daily?.questions) ? cfg.daily.questions : [];
+      const desiredCodes: string[] = desired.map((q: any) => `Q_${String((q as any).id).toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`);
+      const byCode = new Map(allActions.map((a: any) => [a.code, a]));
+      const ordered: any[] = [];
+      for (const code of desiredCodes) {
+        const a = byCode.get(code);
+        if (a) {
+          ordered.push(a);
+          byCode.delete(code);
+        }
+      }
+      const remaining = Array.from(byCode.values());
+      actions = [...ordered, ...remaining];
+    } catch {
+      actions = await prisma.action.findMany();
+    }
+
     isDefinedDay = isDefinedDayHelper(cfg, day);
     // Quiz state detection
     const preId: string | undefined = cfg?.quiz?.preId;
@@ -229,9 +257,10 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
               : [];
     postQuestionsOut = normalizeQuestions(postQuestionsRaw);
 
-    // Only populate defined questions for defined days
-    if (isDefinedDay && Array.isArray(cfg?.defined?.questions)) {
-      definedQuestionsOut = normalizeQuestions(cfg.defined.questions);
+    // Only populate defined questions for defined days (supports legacy single-set and multi-set)
+    if (isDefinedDay) {
+      const dq = getDefinedQuestionsForDate(cfg, day);
+      definedQuestionsOut = normalizeQuestions(Array.isArray(dq) ? dq : []);
     } else {
       definedQuestionsOut = undefined;
     }
@@ -317,78 +346,18 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
 
       {challenge && (
         <div className="space-y-2">
-          {!beforeStart && !afterEnd && abEnabled && abGroup === "A" && (
-            <div className="text-sm">
-              Heutiger Score: {(() => {
-                const todayStr = day.toDateString();
-                const todayItem = days.find((d) => d.date.toDateString() === todayStr);
-                const val = todayItem?.score ?? 0;
-                return val >= 0 ? `+${val}` : String(val);
-              })()}
-            </div>
-          )}
+          <ScoreSummary
+            days={days.map((d) => ({ dateStr: d.date.toDateString(), score: d.score ?? 0 }))}
+            todayStr={day.toDateString()}
+            startScore={challenge.startScore ?? 0}
+            abEnabled={abEnabled}
+            abGroup={abGroup ?? null}
+            beforeStart={beforeStart}
+            afterEnd={afterEnd}
+          />
         </div>
       )}
 
-      {challenge && !beforeStart && !afterEnd && (
-        <section className="space-y-2">
-          {!hasToday && (
-            <Alert>
-              <AlertTitle>Heutige Tageserfassung fehlt</AlertTitle>
-              <AlertDescription>
-                <div className="flex items-center gap-2">
-                  <span>Trage deine Aktivitäten und Antworten für heute ein.</span>
-                  <Link href="#form"><Button size="sm" variant="outline">Jetzt ausfüllen</Button></Link>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-          {Array.isArray((challenge as any)?.config?.quiz?.pre?.questions) && !preDone && (
-            <Alert>
-              <AlertTitle>Pre‑Quiz steht noch aus</AlertTitle>
-              <AlertDescription>
-                <div className="flex items-center gap-2">
-                  <span>Starte mit ein paar Einstiegsfragen.</span>
-                  <Link href="#form"><Button size="sm" variant="outline">Jetzt starten</Button></Link>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-          {isDefinedDay && (
-            <Alert>
-              <AlertTitle>Sonderfragen heute verfügbar</AlertTitle>
-              <AlertDescription>
-                <div className="flex items-center gap-2">
-                  <span>Heute gibt es zusätzliche Fragen.</span>
-                  <Link href="#form"><Button size="sm" variant="outline">Anzeigen</Button></Link>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-          {showWeekly && (
-            <Alert>
-              <AlertTitle>Wöchentliche Reflexion fällig</AlertTitle>
-              <AlertDescription>
-                <div className="flex items-center gap-2">
-                  <span>Beantworte die wöchentlichen Fragen.</span>
-                  <Link href="/onboarding"><Button size="sm" variant="outline">Mehr Infos</Button></Link>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-          {lastDay && Array.isArray((challenge as any)?.config?.quiz?.post?.questions) && !postDone && (
-            <Alert>
-              <AlertTitle>Post‑Quiz heute fällig</AlertTitle>
-              <AlertDescription>
-                <div className="flex items-center gap-2">
-                  <span>Schließe die Challenge mit dem Post‑Quiz ab.</span>
-                  <Link href="#form"><Button size="sm" variant="outline">Zum Abschluss</Button></Link>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-        </section>
-      )}
 
       {challenge && beforeStart && (
         <section className="space-y-2">
@@ -409,7 +378,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Recor
               <div>Zeitraum: {format(new Date(challenge.startDate), "dd.MM.yyyy")} – {format(new Date(challenge.endDate), "dd.MM.yyyy")}.</div>
               <div className="felex md:grid md:grid-cols-2 gap-4 md:gap-2 mt-2">
                 <div><strong>Tage mit Eintrag:</strong> {stats.daysWithEntry} / {stats.totalDays} ({stats.completionRate}%)</div>
-                {abEnabled && abGroup === "A" && <div><strong>Gesamtpunkte:</strong> {stats.totalScore}</div>}
+                {abEnabled && abGroup === "A" && <div><strong>Gesamtpunkte:</strong> {challenge.startScore ?? 0 + stats.totalScore}</div>}
                 {abEnabled && abGroup === "A" && <div><strong>Ø Punkte/aktiver Tag:</strong> {stats.avgScoreActive}</div>}
                 <div><strong>Längste Serie:</strong> {stats.longestStreak} Tage</div>
                 <div><strong>Aktionen insgesamt:</strong> {stats.totalActions}</div>

@@ -2,12 +2,10 @@ import { prisma } from "@/lib/db";
 import { isCurrentUserAdmin } from "@/lib/user";
 import { notFound } from "next/navigation";
 import { differenceInDays, format } from "date-fns";
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CopyText } from "@/components/copy-text";
-import { DateInput } from "@/components/date-input";
 import { getSessionUser } from "@/lib/auth";
 import LoginRequired from "@/components/login-required";
 import { ArrowLeftIcon, InfoIcon } from "lucide-react";
@@ -15,43 +13,7 @@ import { ExportExcelButton } from "@/components/export-excel-button";
 import { AbGroupSelect } from "@/components/ab-group-select";
 import { MembershipAbGroupEditor } from "@/components/membership-ab-group-editor";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-
-async function addQuestionDate(formData: FormData): Promise<void> {
-  "use server";
-  const Schema = z.object({ id: z.string().min(1), date: z.string().min(1) });
-  const parsed = Schema.safeParse({ id: formData.get("id"), date: formData.get("date") });
-  if (!parsed.success) return;
-  const challenge = await (prisma as any).challenge.findUnique({ where: { id: parsed.data.id } });
-  if (!challenge) return;
-  const d = new Date(parsed.data.date);
-  const d0 = new Date(challenge.startDate);
-  const d1 = new Date(challenge.endDate);
-  if (d < d0 || d > d1) return;
-
-  const cfg = (challenge.config as any) || {};
-  // Migrate legacy cfg.defined (array of ISO strings) to cfg.defined.days (yyyy-MM-dd)
-  const dayKey = `${d.getFullYear().toString().padStart(4, "0")}-${(d.getMonth() + 1)
-    .toString()
-    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
-  let definedObj: any = cfg.defined;
-  if (Array.isArray(definedObj)) {
-    const daysFromLegacy = (definedObj as string[]).map((iso) => {
-      const dt = new Date(iso);
-      return `${dt.getFullYear().toString().padStart(4, "0")}-${(dt.getMonth() + 1)
-        .toString()
-        .padStart(2, "0")}-${dt.getDate().toString().padStart(2, "0")}`;
-    });
-    definedObj = { days: Array.from(new Set(daysFromLegacy)), questions: [] };
-  }
-  if (!definedObj || typeof definedObj !== "object") {
-    definedObj = { days: [], questions: [] };
-  }
-  if (!Array.isArray(definedObj.days)) definedObj.days = [];
-  if (!definedObj.days.includes(dayKey)) definedObj.days.push(dayKey);
-  cfg.defined = definedObj;
-  await (prisma as any).challenge.update({ where: { id: challenge.id }, data: { config: cfg } });
-  revalidatePath(`/admin/${challenge.id}`);
-}
+import { DefinedDaysEditor } from "./defined-days.client";
 
 export default async function ChallengeDetails({ params }: { params: { id: string } }) {
   const session = await getSessionUser();
@@ -91,6 +53,16 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
       if (typeof d === "string") definedDaysSet.add(d);
     }
   }
+  // New multi-set shape: collect days from each set
+  if (cfg?.defined && typeof cfg.defined === "object") {
+    for (const value of Object.values(cfg.defined)) {
+      if (value && typeof value === "object" && Array.isArray((value as any).days)) {
+        for (const d of (value as any).days as string[]) {
+          if (typeof d === "string") definedDaysSet.add(d);
+        }
+      }
+    }
+  }
   const definedDays = Array.from(definedDaysSet).sort();
 
   // Helper to normalize mixed question formats to { id, label, type }
@@ -124,10 +96,25 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
         : [];
   const dailyQuestions = normalizeQuestions(dailyQuestionsRaw);
 
-  const definedQuestionsRaw: any[] = Array.isArray(cfg?.defined?.questions)
-    ? cfg.defined.questions
-    : [];
-  const definedQuestions = normalizeQuestions(definedQuestionsRaw);
+  // Merge defined questions from legacy single-set and all multi-sets, de-duplicated by id
+  const definedQuestionsMerged: any[] = [];
+  const seenIds = new Set<string>();
+  if (Array.isArray(cfg?.defined?.questions)) {
+    for (const q of cfg.defined.questions as any[]) {
+      const id = (q as any)?.id;
+      if (id && !seenIds.has(id)) { seenIds.add(id); definedQuestionsMerged.push(q); }
+    }
+  }
+  if (cfg?.defined && typeof cfg.defined === "object") {
+    for (const value of Object.values(cfg.defined)) {
+      const qs: any[] = Array.isArray((value as any)?.questions) ? (value as any).questions : [];
+      for (const q of qs) {
+        const id = (q as any)?.id;
+        if (id && !seenIds.has(id)) { seenIds.add(id); definedQuestionsMerged.push(q); }
+      }
+    }
+  }
+  const definedQuestions = normalizeQuestions(definedQuestionsMerged);
 
   // Pre/Post quiz: support multiple config shapes
   const preQuizId: string | undefined = cfg?.quiz?.preId
@@ -269,22 +256,12 @@ export default async function ChallengeDetails({ params }: { params: { id: strin
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Fragen-Tage ({definedDays.length})</h2>
-        <div className="text-sm">Aktuelle Tage:</div>
-        <ul className="text-sm flex flex-wrap gap-2">
-          {definedDays.length === 0 && <li className="px-2 py-1 rounded border">Keine Tage definiert</li>}
-          {definedDays.map((dayKey) => {
-            const [y, m, d] = dayKey.split("-").map((v) => Number(v));
-            const dt = new Date(y, (m || 1) - 1, d || 1);
-            return <li key={dayKey} className="px-2 py-1 rounded border">{format(dt, "dd.MM.yyyy")}</li>;
-          })}
-        </ul>
-        <form action={addQuestionDate} className="grid gap-2 grid-cols-2 items-end">
-          <input type="hidden" name="id" value={challenge.id} />
-          <label>Datum innerhalb der Challenge</label>
-          <div />
-          <DateInput name="date" min={format(new Date(challenge.startDate), "yyyy-MM-dd")} max={format(new Date(challenge.endDate), "yyyy-MM-dd")} />
-          <Button type="submit">Hinzufügen</Button>
-        </form>
+        <DefinedDaysEditor
+          challengeId={challenge.id}
+          definedDays={definedDays}
+          minDate={format(new Date(challenge.startDate), "yyyy-MM-dd")}
+          maxDate={format(new Date(challenge.endDate), "yyyy-MM-dd")}
+        />
       </section>
 
       <section className="space-y-4">

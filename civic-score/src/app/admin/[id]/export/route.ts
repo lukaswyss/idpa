@@ -32,6 +32,14 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     ? await (prisma as any).entryAction.findMany({ where: { dayEntryId: { in: entryIds } }, include: { action: true } })
     : [];
 
+  // Aggregate total score per user to compute final scores (startScore + sum of daily totals)
+  const totalByUserId: Record<string, number> = {};
+  for (const e of entries as any[]) {
+    const uid = (e as any)?.userId as string;
+    const v = typeof (e as any)?.totalScore === "number" ? (e as any).totalScore : 0;
+    totalByUserId[uid] = (totalByUserId[uid] ?? 0) + v;
+  }
+
   // Build workbook
   const wb = new ExcelJS.Workbook();
   wb.creator = "Civic Score";
@@ -51,9 +59,11 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 
   // Members sheet
   const wsMembers = wb.addWorksheet("Members");
-  wsMembers.addRow(["membershipId", "userId", "joinedAt", "abGroup"]);
+  wsMembers.addRow(["membershipId", "userId", "joinedAt", "abGroup", "finalScore"]);
   for (const m of memberships as any[]) {
-    wsMembers.addRow([m.id, m.userId, format(new Date(m.joinedAt), "yyyy-MM-dd"), m.abGroup ?? ""]);
+    const sumUser = totalByUserId[(m as any).userId] ?? 0;
+    const finalScore = (challenge as any)?.startScore ? Number((challenge as any).startScore) + sumUser : sumUser;
+    wsMembers.addRow([m.id, m.userId, format(new Date(m.joinedAt), "yyyy-MM-dd"), m.abGroup ?? "", finalScore]);
   }
 
   // DayEntries sheet
