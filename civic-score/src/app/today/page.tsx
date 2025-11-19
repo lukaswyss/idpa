@@ -393,6 +393,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
       {challenge && !beforeStart && !afterEnd ? (
         <div id="form">
           <DailyForm
+            key={`${challenge.code}-${format(day, "yyyy-MM-dd")}`}
             actions={actions}
             challengeCode={challenge.code}
             initialSelected={initialSelected}

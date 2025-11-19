@@ -43,6 +43,15 @@ export function DailyForm({ actions, challengeCode, initialSelected, questions, 
   const lastRef = useRef<Date | null>(null);
   const router = useRouter();
 
+  // Reset form state when the viewed day (or initial data) changes
+  useEffect(() => {
+    try {
+      form.reset({ selected: initialSelected ?? [], answers: initialAnswers ?? {} });
+      firstRef.current = null;
+      lastRef.current = null;
+    } catch {}
+  }, [form, dayYmd, initialSelected, initialAnswers]);
+
   console.log("definedQuestions", definedQuestions);
   console.log("preQuestions", preQuestions);
   console.log("postQuestions", postQuestions);
