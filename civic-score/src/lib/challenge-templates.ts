@@ -45,12 +45,14 @@ export const DEFAULT_CHALLENGE_CONFIG: any = {
         },
         {
           id: "post_social_pressure",
-          label: "Hast du sozialen Druck durch die Challenge empfunden?",
+          label: "Hast du Druck durch die Challenge empfunden, dass du dein Verhalten ändern musst?",
           type: "select",
           items: [
             { id: "no", label: "Nein" },
-            { id: "some", label: "Etwas" },
-            { id: "strong", label: "Stark" }
+            { id: "unknown", label: "keine Ahnung" },
+            { id: "light", label: "Ja, leicht" },
+            { id: "medium", label: "Ja, mittel" },
+            { id: "strong", label: "Ja, stark" }
           ]
         },
         { id: "post_feedback", label: "Kurzes Feedback zur Challenge (anonym)", type: "text" },
