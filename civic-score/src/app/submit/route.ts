@@ -10,6 +10,8 @@ const BodySchema = z.object({
   answers: z.record(z.string(), z.any()).optional().default({}),
   // Challenge Code ist Pflicht: Nur Einträge innerhalb einer Challenge erlaubt
   challengeCode: z.string().min(1),
+  // Optionales Ziel-Datum (yyyy-MM-dd) für Dev-Mode/Backfill innerhalb des Challenge-Zeitraums
+  day: z.string().optional(),
   firstAnswerAt: z.string().datetime().optional(),
   lastAnswerAt: z.string().datetime().optional(),
   submittedAt: z.string().datetime().optional(),
@@ -28,10 +30,6 @@ export async function POST(req: NextRequest) {
     if (!session) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
-
-    // Heute (nur Datumsteil)
-    const now = new Date();
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     // Hole Aktionen & Score
     const uniqueIds = Array.from(new Set(parsed.data.selected));
@@ -55,6 +53,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Nicht Mitglied der Challenge" }, { status: 403 });
     }
     const challengeId: string | undefined = challenge.id;
+
+    // Ziel-Datum bestimmen:
+    // Standard ist "heute". Falls im Body ein "day" (yyyy-MM-dd) angegeben ist UND innerhalb der Challenge liegt,
+    // wird dieses verwendet (unterstützt Dev-Mode/Zurück-/Vortragen).
+    const now = new Date();
+    let day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    try {
+      const bodyDay = (parsed.data.day || "").trim();
+      if (bodyDay) {
+        const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(bodyDay);
+        if (m) {
+          const y = parseInt(m[1], 10);
+          const mo = parseInt(m[2], 10) - 1;
+          const d = parseInt(m[3], 10);
+          const candidate = new Date(y, mo, d);
+          if (!isNaN(candidate.getTime())) {
+            const startDay = new Date(new Date(challenge.startDate).getFullYear(), new Date(challenge.startDate).getMonth(), new Date(challenge.startDate).getDate());
+            const endDay = new Date(new Date(challenge.endDate).getFullYear(), new Date(challenge.endDate).getMonth(), new Date(challenge.endDate).getDate());
+            if (candidate >= startDay && candidate <= endDay) {
+              day = candidate;
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore malformed day
+    }
 
     // Zusätzlicher Score: aus beantworteten, gewichteten Questions der Challenge-Config
     const cfg: any = (challenge as any)?.config || {};

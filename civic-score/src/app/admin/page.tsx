@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { DateInput } from "@/components/date-input";
 import { getSessionUser } from "@/lib/auth";
 import { generateUniqueChallengeCode } from "@/lib/challenge";
 import LoginRequired from "@/components/login-required";
@@ -17,7 +16,6 @@ import { CreateChallengeForm } from "@/components/create-challenge-form";
 import { getDefaultChallengeConfig } from "@/lib/challenge-templates";
 import { CreateChallengeDialog } from "@/components/create-challenge-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusIcon } from "lucide-react";
 
 async function createChallenge(formData: FormData): Promise<{ ok: boolean; id?: string; code?: string; title?: string; error?: string }> {
   "use server";

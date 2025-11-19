@@ -32,7 +32,7 @@ type FormData = z.infer<typeof Schema>;
 
 type Question = { id: string; label: string; type: "text" | "boolean" | "radio" | "number" | "select" | "stars"; items?: { id: string; label: string }[]; stars?: number; weight?: number };
 
-export function DailyForm({ actions, challengeCode, initialSelected, questions, definedQuestions, initialAnswers, abMode, abGroup, preQuestions, postQuestions, showOnlyPre }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; questions?: Question[]; definedQuestions?: Question[]; dailyQuestions?: Question[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B"; preQuestions?: Question[]; postQuestions?: Question[]; showOnlyPre?: boolean }) {
+export function DailyForm({ actions, challengeCode, initialSelected, questions, definedQuestions, initialAnswers, abMode, abGroup, preQuestions, postQuestions, showOnlyPre, dayYmd }: { actions: Action[]; challengeCode?: string; initialSelected?: string[]; questions?: Question[]; definedQuestions?: Question[]; dailyQuestions?: Question[]; initialAnswers?: Record<string, unknown>; abMode?: boolean; abGroup?: "A" | "B"; preQuestions?: Question[]; postQuestions?: Question[]; showOnlyPre?: boolean; dayYmd?: string }) {
   const groups = actions.reduce<Record<string, Action[]>>((acc, a) => {
     (acc[a.category] ||= []).push(a);
     return acc;
@@ -81,6 +81,7 @@ export function DailyForm({ actions, challengeCode, initialSelected, questions, 
       body: JSON.stringify({
         ...data,
         challengeCode,
+        day: dayYmd,
         firstAnswerAt: first ? first.toISOString() : undefined,
         lastAnswerAt: last ? last.toISOString() : undefined,
         submittedAt: submittedAt.toISOString(),

@@ -403,6 +403,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
             preQuestions={!preDone ? preQuestionsOut : undefined}
             postQuestions={lastDay && !postDone ? postQuestionsOut : undefined}
             showOnlyPre={!preDone}
+            dayYmd={format(day, "yyyy-MM-dd")}
           />
         </div>
       ) : (
