@@ -39,9 +39,9 @@ export const DEFAULT_CHALLENGE_CONFIG: any = {
         { id: "post_influence_explanation", label: "Wenn Ja, erkläre kurz, wie die Challenge deine alltäglichen Aktionen beeinflusst hat", type: "text" },
         {
           id: "pre_occupation", label: "In welche Richtung hat sich dein verhalten geändert?", type: "select", items: [
-            { id: "positive", label: "Positiv - ich habe mir mehr Mühe gegeben" },
-            { id: "negative", label: "Negativ - ich habe mir weniger Mühe gegeben" },
-            { id: "neutral", label: "Neutral - ich habe mein Verhalten nicht geändert" }]
+            { id: "positive", label: "Positiv - Ich habe mir mehr Mühe gegeben" },
+            { id: "negative", label: "Negativ - Ich habe mir weniger Mühe gegeben" },
+            { id: "neutral", label: "Neutral - Ich habe mein Verhalten nicht geändert" }]
         },
         {
           id: "post_social_pressure",
