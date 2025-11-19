@@ -402,7 +402,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
             abMode={Boolean(challenge?.abEnabled)}
             abGroup={abGroup}
             preQuestions={!preDone ? preQuestionsOut : undefined}
-            postQuestions={lastDay && !postDone ? postQuestionsOut : undefined}
+            postQuestions={lastDay ? postQuestionsOut : undefined}
             showOnlyPre={!preDone}
             dayYmd={format(day, "yyyy-MM-dd")}
           />
