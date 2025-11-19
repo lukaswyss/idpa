@@ -190,8 +190,8 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
           byCode.delete(code);
         }
       }
-      const remaining = Array.from(byCode.values());
-      actions = [...ordered, ...remaining];
+      // Only use actions defined in the challenge template (do not append global leftovers)
+      actions = ordered;
     } catch {
       actions = await prisma.action.findMany();
     }
