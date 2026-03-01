@@ -1,12 +1,13 @@
 // prisma/schema.prisma
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  previewFeatures = ["driverAdapters", "multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["idpa"]
 }
 
 
@@ -19,6 +20,8 @@ model Action {
   polarity  String   // "positive" | "negative"
   // optional: isActive Boolean @default(true)
   entryActions EntryAction[]
+
+  @@schema("idpa")
 }
 
 model DayEntry {
@@ -41,6 +44,7 @@ model DayEntry {
   challenge     Challenge?    @relation(fields: [challengeId], references: [id])
   actions       EntryAction[]
   @@unique([userId, date, challengeId])
+  @@schema("idpa")
 }
 
 model EntryAction {
@@ -50,6 +54,7 @@ model EntryAction {
   dayEntry   DayEntry @relation(fields: [dayEntryId], references: [id])
   action     Action   @relation(fields: [actionId], references: [id])
   @@unique([dayEntryId, actionId])
+  @@schema("idpa")
 }
 
 model Challenge {
@@ -66,6 +71,8 @@ model Challenge {
   config      Json?
   memberships ChallengeMembership[]
   entries     DayEntry[]
+
+  @@schema("idpa")
 }
 
 // Removed ChallengeDay in favor of JSON config stored on Challenge
@@ -79,11 +86,14 @@ model ChallengeMembership {
   user          User        @relation(fields: [userId], references: [id])
   challenge     Challenge   @relation(fields: [challengeId], references: [id])
   @@unique([userId, challengeId])
+  @@schema("idpa")
 }
 
 enum AbGroup {
   A
   B
+
+  @@schema("idpa")
 }
 
 model User {
@@ -97,6 +107,8 @@ model User {
   sessions      AuthSession[]
   entries       DayEntry[]
   memberships   ChallengeMembership[]
+
+  @@schema("idpa")
 }
 
 // AdminRole grants admin rights to a User. Presence of a record means admin.
@@ -106,6 +118,8 @@ model AdminRole {
   userId    String   @unique
 
   user      User     @relation(fields: [userId], references: [id])
+
+  @@schema("idpa")
 }
 
 /// Simple session model to support user login sessions
@@ -119,4 +133,5 @@ model AuthSession {
   user      User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@schema("idpa")
 }

@@ -31,7 +31,7 @@ export function ExportExcelButton({ challengeId, challengeCode }: { challengeId:
       }}
     >
       {loading ? <Spinner className="mr-2" /> : <DownloadIcon className="mr-2" />}
-      Excel Export
+      Excel Export Overview
     </Button>
   );
 }
